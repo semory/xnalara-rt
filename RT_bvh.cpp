@@ -3,7 +3,9 @@
 #include "RT_depth.h"
 #include "RT_xnalara.h"
 #include "RT_texture.h"
+#include "RT_lights.h"
 #include "RT_bvh.h"
+#include "RT_raytrace.h"
 
 RTDynamicBVH::RTDynamicBVH() : model(nullptr)
 {
@@ -372,5 +374,67 @@ bool RTDynamicBVH::raytest(const ray3D& ray)
  if(!tree.size()) return false;
  test = ray;
  traverse(tree[0]);
+ return true;
+}
+
+/*
+** One of the problems I had with this is that traversal is done inside the
+** BVH tree class, which is detached from the ray tracer class. So including
+** a pointer to the ray tracer class was a pain in the ass. What I will do
+** instead next time is just make RTRayTracer a friend of RTDynamicBVH so
+** that the traversal code can be done by the ray tracer class.
+*/
+void RTDynamicBVH::traverse2(const RTNode& node)const
+{
+ // outer node -> test faces
+ if(node.faces) {
+    for(uint32_t i = 0; i < node.faces; i++)
+       {
+        // face must be visible
+        const XNAGlobalFace& face = model->facelist[node.face_index + i];
+        //if(model->meshlist[face.mesh_index].params.optional[1] == false) continue;
+
+        // must have shader
+        auto shader = model->meshlist[face.mesh_index].params.shader2;
+        if(!shader) return;
+
+        // intersect test
+        ray3D_triangle3D_intersect_result result;
+        const XNAVertex* v0 = &(model->meshlist[face.mesh_index].verts[face.refs[0]]);
+        const XNAVertex* v1 = &(model->meshlist[face.mesh_index].verts[face.refs[1]]);
+        const XNAVertex* v2 = &(model->meshlist[face.mesh_index].verts[face.refs[2]]);
+        ray3D_triangle3D_intersect(result, test, v0->position, v1->position, v2->position, false);
+        if(result.intersect) {
+           XNAShaderData sd;
+           sd.model = model;
+           sd.face = &face;
+           sd.v0 = v0;
+           sd.v1 = v1;
+           sd.v2 = v2;
+           sd.ray = &test;
+           sd.t = result.t;
+           sd.u = result.u;
+           sd.v = result.v;
+           sd.w = 1.0f - result.u - result.v;
+           auto color = (*shader)(&sd);
+           UpdateDepthTest(color, result.t, model->meshlist[face.mesh_index].params.alpha);
+          }
+       }
+   }
+ // inner node -> test children
+ // note we need near and far plane information here
+ else {
+    uint32_t child1 = node.node_index;
+    uint32_t child2 = node.node_index + 1;
+    if(ray3D_AABB(test, node.bbmin, node.bbmax, 0.0f, 1000.0f)) traverse2(tree[child1]);
+    if(ray3D_AABB(test, node.bbmin, node.bbmax, 0.0f, 1000.0f)) traverse2(tree[child2]);
+   }
+}
+
+bool RTDynamicBVH::raytest2(const ray3D& ray)
+{
+ if(!tree.size()) return false;
+ test = ray;
+ traverse2(tree[0]);
  return true;
 }

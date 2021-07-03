@@ -4,7 +4,7 @@
 #include "RT_math.h"
 
 struct AlphaPixel {
- vector4D<unsigned char> color;
+ vector4D<float> color;
  float distance;
 };
 
@@ -21,28 +21,28 @@ struct DepthTest {
   {
   }
  public :
-  vector4D<unsigned char> blend(void)const
+  vector4D<float> blend(void)const
   {
    if(n == 0) return pixellist[0].color;
-   vector4D<unsigned char> dst = pixellist[n - 1].color;
+   vector4D<float> dst = pixellist[n - 1].color;
    for(unsigned int i = 1; i < n; i++) {
-       const vector4D<unsigned char>& src = pixellist[n - 1 - i].color;
-       float a1 = src[3]/255.0f;
-       float a2 = 1.0f - a1;
-       dst[0] = static_cast<unsigned char>(src[0]*a1 + dst[0]*a2);
-       dst[1] = static_cast<unsigned char>(src[1]*a1 + dst[1]*a2);
-       dst[2] = static_cast<unsigned char>(src[2]*a1 + dst[2]*a2);
-       dst[3] = 255;
+       const vector4D<float>& src = pixellist[n - 1 - i].color;
+       float a1 = src[3];
+       float a2 = 1.0f - src[3];
+       dst[0] = src[0]*a1 + dst[0]*a2;
+       dst[1] = src[1]*a1 + dst[1]*a2;
+       dst[2] = src[2]*a1 + dst[2]*a2;
+       dst[3] = 1.0f;
       }
    return dst;
   }
-  void Update(const vector4D<unsigned char>& color, float distance)
+  void Update(const vector4D<float>& color, float distance)
   {
    // CASE #1
    // FIRST PIXEL IS ALWAYS OPAQUE
    if(!n) {
       pixellist[0].color = color;
-      pixellist[0].color[3] = 255;
+      pixellist[0].color[3] = 1.0f;
       pixellist[0].distance = distance;
       n = 1;
       return;
@@ -54,7 +54,7 @@ struct DepthTest {
 
    // CASE #3
    // OPAQUE PIXELS
-   if(color[3] == 255)
+   if(color[3] == 1.0f)
      {
       if(n == max_size)
         {

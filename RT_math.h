@@ -53,26 +53,30 @@ inline bool zerotest(float x)
 
 template<class T>
 struct vector2D {
- T v[2];
+ union {
+  T data[2];
+  struct { T u, v; };
+  struct { T x, y; };
+ };
  vector2D() {}
  vector2D(const vector2D<T>& obj) {
-  v[0] = obj.v[0];
-  v[1] = obj.v[1];
+  data[0] = obj.data[0];
+  data[1] = obj.data[1];
  }
  explicit vector2D(const T* ptr) {
-  v[0] = ptr[0];
-  v[1] = ptr[1];
+  data[0] = ptr[0];
+  data[1] = ptr[1];
  }
- T& operator [](size_t index) { return v[index]; }
- const T& operator [](size_t index)const { return v[index]; }
+ T& operator [](size_t index) { return data[index]; }
+ const T& operator [](size_t index)const { return data[index]; }
  vector2D<T>& operator +=(const vector2D<T>& other) {
-  v[0] += other.v[0];
-  v[1] += other.v[1];
+  data[0] += other.data[0];
+  data[1] += other.data[1];
   return *this;
  }
  vector2D<T>& operator -=(const vector2D<T>& other) {
-  v[0] -= other.v[0];
-  v[1] -= other.v[1];
+  data[0] -= other.data[0];
+  data[1] -= other.data[1];
   return *this;
  }
 };
@@ -80,16 +84,16 @@ struct vector2D {
 template<class T>
 inline vector2D<T> operator +(const vector2D<T>& v1, const vector2D<T>& v2) {
  vector2D<T> temp;
- temp.v[0] = v1.v[0] + v2.v[0];
- temp.v[1] = v1.v[1] + v2.v[1];
+ temp.data[0] = v1.data[0] + v2.data[0];
+ temp.data[1] = v1.data[1] + v2.data[1];
  return temp;
 }
 
 template<class T>
 inline vector2D<T> operator -(const vector2D<T>& v1, const vector2D<T>& v2) {
  vector2D<T> temp;
- temp.v[0] = v1.v[0] - v2.v[0];
- temp.v[1] = v1.v[1] - v2.v[1];
+ temp.data[0] = v1.data[0] - v2.data[0];
+ temp.data[1] = v1.data[1] - v2.data[1];
  return temp;
 }
 
@@ -99,7 +103,11 @@ inline vector2D<T> operator -(const vector2D<T>& v1, const vector2D<T>& v2) {
 
 template<class T>
 struct vector3D {
- T v[3];
+ union {
+  T v[3];
+  struct { T r, g, b; };
+  struct { T x, y, z; };
+ };
  vector3D() {}
  vector3D(const T& p1, const T& p2, const T& p3) {
   v[0] = p1;
@@ -207,6 +215,13 @@ inline float vector3D_normalize(float* x, const float* v)
  return norm;
 }
 
+inline void vector3D_vector_product(float* dst, const float* v1, const float* v2)
+{
+ dst[0] = v1[1]*v2[2] - v1[2]*v2[1];
+ dst[1] = v1[2]*v2[0] - v1[0]*v2[2];
+ dst[2] = v1[0]*v2[1] - v1[1]*v2[0];
+}
+
 inline float vector3D_scalar_product(const float* v1, const float* v2)
 {
  return (v1[0]*v2[0]) + (v1[1]*v2[1]) + (v1[2]*v2[2]);
@@ -233,7 +248,58 @@ struct vector4D {
  };
  T& operator [](size_t index) { return v[index]; }
  const T& operator [](size_t index)const { return v[index]; }
+ vector4D() {}
+ vector4D(float r, float g, float b, float a) {
+  this->r = r;
+  this->g = g;
+  this->b = b;
+  this->a = a;
+ }
+ vector4D<T>& operator +=(const vector4D<T>& other) {
+  v[0] += other.v[0];
+  v[1] += other.v[1];
+  v[2] += other.v[2];
+  v[3] += other.v[3];
+  return *this;
+ }
+ vector4D<T>& operator -=(const vector4D<T>& other) {
+  v[0] -= other.v[0];
+  v[1] -= other.v[1];
+  v[2] -= other.v[2];
+  v[3] -= other.v[3];
+  return *this;
+ }
+ vector4D<T>& operator *=(const T* other) {
+  v[0] *= other[0];
+  v[1] *= other[1];
+  v[2] *= other[2];
+  v[3] *= other[3];
+  return *this;
+ }
+ vector4D<T>& operator *=(const vector4D<T>& other) {
+  return (*this *= (&other.v[0]));
+ }
 };
+
+template<class T>
+inline vector4D<T> operator +(const vector4D<T>& v1, const vector4D<T>& v2) {
+ vector4D<T> rv;
+ rv[0] = v1[0] + v2[0];
+ rv[1] = v1[1] + v2[1];
+ rv[2] = v1[2] + v2[2];
+ rv[3] = v1[3] + v2[3];
+ return rv;
+}
+
+template<class T>
+inline vector4D<T> operator -(const vector4D<T>& v1, const vector4D<T>& v2) {
+ vector4D<T> rv;
+ rv[0] = v1[0] - v2[0];
+ rv[1] = v1[1] - v2[1];
+ rv[2] = v1[2] - v2[2];
+ rv[3] = v1[3] - v2[3];
+ return rv;
+}
 
 //
 // TRIANGLES
@@ -278,6 +344,18 @@ inline void RotationMatrix4D_YZ(float* m, float r1, float r2)
  m[0x4] =     s2; m[0x5] =     c2; m[0x6] = zer; m[0x7] = zer;
  m[0x8] = -s1*c2; m[0x9] =  s1*s2; m[0xA] =  c1; m[0xB] = zer;
  m[0xC] =    zer; m[0xD] =    zer; m[0xE] = zer; m[0xF] = one;
+}
+
+inline void RotationMatrix4D_ZY(float* m, float r1, float r2)
+{
+ float zer = 0.0f;
+ float one = 1.0f;
+ float c1 = std::cos(r1); float c2 = std::cos(r2);
+ float s1 = std::sin(r1); float s2 = std::sin(r2);
+ m[0x0] = c1*c2; m[0x1] = -s1; m[0x2] = c1*s2; m[0x3] = zer;
+ m[0x4] = s1*c2; m[0x5] =  c1; m[0x6] = s1*s2; m[0x7] = zer;
+ m[0x8] =   -s2; m[0x9] = zer; m[0xA] =    c2; m[0xB] = zer;
+ m[0xC] =   zer; m[0xD] = zer; m[0xE] =   zer; m[0xF] = one;
 }
 
 #pragma endregion MATRIX_FUNCTIONS
@@ -471,12 +549,13 @@ inline void ray3D_triangle3D_intersect(ray3D_triangle3D_intersect_result& result
     return;
    }
 
- // 
- if(cull)
-   {
+ // triangle is backfacing
+ if(cull && determinant < 0) {
+    result.intersect = false;
+    return;
    }
+
  // not culling
- else
    {
     // compute L = C - O
     float inverse_determinant = inv(determinant);

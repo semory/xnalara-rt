@@ -10,7 +10,7 @@ class RTDynamicBVH {
   constexpr static uint32_t max_faces = 4;
   constexpr static uint32_t n_bins = 8;
   constexpr static float binning_epsilon = 1.0e-6f;
- private :
+ public :
   XNAModel* model; // can't be constant -> must sort index buffer
   struct RTNode {
    float bbmin[3];
@@ -35,6 +35,9 @@ class RTDynamicBVH {
  public :
   void set_depth_test(DepthTest* ptr) { dt = ptr; }
   bool raytest(const ray3D& ray);
+ public :
+  void traverse2(const RTNode& node)const;
+  bool raytest2(const ray3D& ray);
  public :
   size_t nodes(void)const { return tree.size(); }
  public :

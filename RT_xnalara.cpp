@@ -2,8 +2,10 @@
 #include "RT_math.h"
 #include "RT_win32.h"
 #include "RT_shade.h"
-#include "RT_xnalara.h"
 #include "RT_texture.h"
+#include "RT_lights.h"
+#include "RT_raytrace.h"
+#include "RT_xnalara.h"
 
 bool XNAReadBinaryString(std::ifstream& ifile, STDSTRINGW& out)
 {
@@ -80,10 +82,15 @@ bool XNAReadVector4D(std::ifstream& ifile, float* value)
  return true; 
 }
 
-bool XNAReadColor4D(std::ifstream& ifile, unsigned char* value)
+bool XNAReadColor4D(std::ifstream& ifile, float* value)
 {
- ifile.read((char*)value, 4);
+ unsigned char temp[4];
+ ifile.read((char*)temp, 4);
  if(ifile.fail()) return false;
+ value[0] = static_cast<float>(temp[0])/255.0f;
+ value[1] = static_cast<float>(temp[1])/255.0f;
+ value[2] = static_cast<float>(temp[2])/255.0f;
+ value[3] = static_cast<float>(temp[3])/255.0f;
  return true; 
 }
 
@@ -209,50 +216,50 @@ bool XNAExtractMeshParams(const std::wstring& src, XNAMeshParams& out)
       }
     // set shader
     switch(out.render_group) {
-      case( 0) : out.shader = RG00; break;
-      case( 1) : out.shader = RG01; break;
-      case( 2) : out.shader = RG02; break;
-      case( 3) : out.shader = RG03; break;
-      case( 4) : out.shader = RG04; break;
-      case( 5) : out.shader = RG05; break;
-      case( 6) : out.shader = RG06; break;
-      case( 7) : out.shader = RG07; break;
-      case( 8) : out.shader = RG08; break;
-      case( 9) : out.shader = RG09; break;
-      case(10) : out.shader = RG10; break;
-      case(11) : out.shader = RG11; break;
-      case(12) : out.shader = RG12; break;
-      case(13) : out.shader = RG13; break;
-      case(14) : out.shader = RG14; break;
-      case(15) : out.shader = RG15; break;
-      case(16) : out.shader = RG16; break;
-      case(17) : out.shader = RG17; break;
-      case(18) : out.shader = RG18; break;
-      case(19) : out.shader = RG19; break;
-      case(20) : out.shader = RG20; break;
-      case(21) : out.shader = RG21; break;
-      case(22) : out.shader = RG22; break;
-      case(23) : out.shader = RG23; break;
-      case(24) : out.shader = RG24; break;
-      case(25) : out.shader = RG25; break;
-      case(26) : out.shader = RG26; break;
-      case(27) : out.shader = RG27; break;
-      case(28) : out.shader = RG28; break;
-      case(29) : out.shader = RG29; break;
-      case(30) : out.shader = RG30; break;
-      case(31) : out.shader = RG31; break;
-      case(32) : out.shader = RG32; break;
-      case(33) : out.shader = RG33; break;
-      case(34) : out.shader = RG34; break;
-      case(35) : out.shader = RG35; break;
-      case(36) : out.shader = RG36; break;
-      case(37) : out.shader = RG37; break;
-      case(38) : out.shader = RG38; break;
-      case(39) : out.shader = RG39; break;
-      case(40) : out.shader = RG40; break;
-      case(41) : out.shader = RG41; break;
-      case(42) : out.shader = RG42; break;
-      case(43) : out.shader = RG43; break;
+      case( 0) : out.shader = RG00; out.shader2 = RG00; out.alpha = 0; break;
+      case( 1) : out.shader = RG01; out.shader2 = RG01; out.alpha = 0; break;
+      case( 2) : out.shader = RG02; out.shader2 = RG02; out.alpha = 0; break;
+      case( 3) : out.shader = RG03; out.shader2 = RG03; out.alpha = 0; break;
+      case( 4) : out.shader = RG04; out.shader2 = RG04; out.alpha = 0; break;
+      case( 5) : out.shader = RG05; out.shader2 = RG05; out.alpha = 0; break;
+      case( 6) : out.shader = RG06; out.shader2 = RG06; out.alpha = 1; break;
+      case( 7) : out.shader = RG07; out.shader2 = RG07; out.alpha = 1; break;
+      case( 8) : out.shader = RG08; out.shader2 = RG08; out.alpha = 1; break;
+      case( 9) : out.shader = RG09; out.shader2 = RG09; out.alpha = 1; break;
+      case(10) : out.shader = RG10; out.shader2 = RG10; out.alpha = 0; break;
+      case(11) : out.shader = RG11; out.shader2 = RG11; out.alpha = 0; break;
+      case(12) : out.shader = RG12; out.shader2 = RG12; out.alpha = 1; break;
+      case(13) : out.shader = RG13; out.shader2 = RG13; out.alpha = 0; break;
+      case(14) : out.shader = RG14; out.shader2 = RG14; out.alpha = 0; break;
+      case(15) : out.shader = RG15; out.shader2 = RG15; out.alpha = 1; break;
+      case(16) : out.shader = RG16; out.shader2 = RG16; out.alpha = 0; break;
+      case(17) : out.shader = RG17; out.shader2 = RG17; out.alpha = 0; break;
+      case(18) : out.shader = RG18; out.shader2 = RG18; out.alpha = 1; break;
+      case(19) : out.shader = RG19; out.shader2 = RG19; out.alpha = 1; break;
+      case(20) : out.shader = RG20; out.shader2 = RG20; out.alpha = 1; break;
+      case(21) : out.shader = RG21; out.shader2 = RG21; out.alpha = 1; break;
+      case(22) : out.shader = RG22; out.shader2 = RG22; out.alpha = 0; break;
+      case(23) : out.shader = RG23; out.shader2 = RG23; out.alpha = 1; break;
+      case(24) : out.shader = RG24; out.shader2 = RG24; out.alpha = 0; break;
+      case(25) : out.shader = RG25; out.shader2 = RG25; out.alpha = 1; break;
+      case(26) : out.shader = RG26; out.shader2 = RG26; out.alpha = 0; break;
+      case(27) : out.shader = RG27; out.shader2 = RG27; out.alpha = 1; break;
+      case(28) : out.shader = RG28; out.shader2 = RG28; out.alpha = 0; break;
+      case(29) : out.shader = RG29; out.shader2 = RG29; out.alpha = 1; break;
+      case(30) : out.shader = RG30; out.shader2 = RG30; out.alpha = 0; break;
+      case(31) : out.shader = RG31; out.shader2 = RG31; out.alpha = 1; break;
+      case(32) : out.shader = RG32; out.shader2 = RG32; out.alpha = 0; break;
+      case(33) : out.shader = RG33; out.shader2 = RG33; out.alpha = 1; break;
+      case(34) : out.shader = RG34; out.shader2 = RG34; out.alpha = 0; break;
+      case(35) : out.shader = RG35; out.shader2 = RG35; out.alpha = 1; break;
+      case(36) : out.shader = RG36; out.shader2 = RG36; out.alpha = 0; break;
+      case(37) : out.shader = RG37; out.shader2 = RG37; out.alpha = 1; break;
+      case(38) : out.shader = RG38; out.shader2 = RG38; out.alpha = 0; break;
+      case(39) : out.shader = RG39; out.shader2 = RG39; out.alpha = 1; break;
+      case(40) : out.shader = RG40; out.shader2 = RG40; out.alpha = 0; break;
+      case(41) : out.shader = RG41; out.shader2 = RG41; out.alpha = 1; break;
+      case(42) : out.shader = RG42; out.shader2 = RG42; out.alpha = 0; break;
+      case(43) : out.shader = RG43; out.shader2 = RG43; out.alpha = 1; break;
       default : return error("Invalid render group.", __FILE__, __LINE__);
      }
    }

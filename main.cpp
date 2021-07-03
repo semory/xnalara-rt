@@ -7,6 +7,9 @@
 #include "RT_texture.h"
 #include "RT_win32.h"
 #include "RT_xnalara.h"
+#include "RT_lights.h"
+#include "RT_bvh.h"
+#include "RT_raytrace.h"
 using namespace std;
 
 #define TIME_TEST
@@ -15,8 +18,30 @@ bool GenerateMultiJitteredUnitSquareSamples(std::vector<vector2D<float>>& dst, s
 //bool ConvertModel(XNAModel& src, RTMergedModel& dst);
 //bool ConvertToOBJ(const RTMergedModel& model);
 
+void render(void)
+{
+ // load model into ray tracer
+ if(!LoadModel(L"C:\\Users\\semory\\Desktop\\DESKTOP\\xnalara\\Alcina Dimitrescu\\xps.xps"))
+    return;
+
+ // initialize default camera and lights
+ InitCamera();
+ InitLights2();
+
+ // set render target dimensions
+ SetClearColor(vector4D<float>(0.0f, 0.0f, 0.0f, 0.0f));
+ SetTargetDims(1920, 1080);
+ SetJitterDims(8);
+
+ // render
+ Trace(L"test.bmp");
+}
+
 int main()
 {
+ render();
+ return 0;
+
  // time testing
  #ifdef TIME_TEST
  __int64 hz;
@@ -56,16 +81,16 @@ int main()
  #endif
 
  // camera position + orientation
- float E[3] = { 0.0f, 1.4f, 3.0f }; // eye position vector (origin)
+ float E[3] = { 0.0f, 1.4f, 8.0f }; // eye position vector (origin)
  float D[3] = { 0.0f, 0.0f,-1.0f }; // look-at direction (x-axis)
  float L[3] = {-1.0f, 0.0f, 0.0f }; // left direction (y-axis)
  float U[3] = { 0.0f, 1.0f, 0.0f }; // up direction (z-axis)
 
  // camera properties
- float nplane = 0.1f;
- float fplane = 5000.0f;
+ float nplane = 0.05f;
+ float fplane = 150.0f;
  float pratio = fplane/nplane;
- float fovy = 60.0f;
+ float fovy = 30.0f;
  float aspect = static_cast<float>(image_dx)/static_cast<float>(image_dy);
 
  // near plane half-dimensions
@@ -88,11 +113,11 @@ int main()
  };
 
  // ray tracing variables
- vector4D<unsigned char> clearcolor;
- clearcolor[0] = 0;
- clearcolor[1] = 0;
- clearcolor[2] = 0;
- clearcolor[3] = 255;
+ vector4D<float> clearcolor;
+ clearcolor[0] = 0.0f;
+ clearcolor[1] = 0.0f;
+ clearcolor[2] = 0.0f;
+ clearcolor[3] = 1.0f;
 
  // sampling variables
  size_t m = 4;
@@ -111,11 +136,11 @@ int main()
          GenerateMultiJitteredUnitSquareSamples(pointlist, m, n);
 
          // sample accumulator
-         vector4D<uint32_t> sample_color;
-         sample_color[0] = 0;
-         sample_color[1] = 0;
-         sample_color[2] = 0;
-         sample_color[3] = 0;
+         vector4D<float> sample_color;
+         sample_color[0] = 0.0f;
+         sample_color[1] = 0.0f;
+         sample_color[2] = 0.0f;
+         sample_color[3] = 0.0f;
 
          // for each sample
          for(const vector2D<float>& point : pointlist)
@@ -167,10 +192,10 @@ int main()
          // set pixel color based on depth test
          unsigned int index = (image_dy - r - 1)*image_pitch + 4*c;
          unsigned char* ptr = reinterpret_cast<unsigned char*>(image.get()) + index;
-         ptr[0] = static_cast<uint8_t>(sample_color[2]/n_samples);
-         ptr[1] = static_cast<uint8_t>(sample_color[1]/n_samples);
-         ptr[2] = static_cast<uint8_t>(sample_color[0]/n_samples);
-         ptr[3] = static_cast<uint8_t>(sample_color[3]/n_samples);
+         ptr[0] = static_cast<uint8_t>(255.0f*sample_color[2]/n_samples);
+         ptr[1] = static_cast<uint8_t>(255.0f*sample_color[1]/n_samples);
+         ptr[2] = static_cast<uint8_t>(255.0f*sample_color[0]/n_samples);
+         ptr[3] = static_cast<uint8_t>(255.0f*sample_color[3]/n_samples);
 
          curr_pixel++;
          #ifndef TIME_TEST

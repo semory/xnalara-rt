@@ -33,7 +33,7 @@ struct XNATextureData {
  unsigned short mipmap;
  XNATextureFormat format;
  std::unique_ptr<unsigned char[]> data;
- std::function<vector4D<unsigned char>(XNATextureData*, float, float)> sampler;
+ std::function<vector4D<float>(XNATextureData*, float, float)> sampler;
 };
 
 // Global Texture Functions

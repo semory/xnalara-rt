@@ -51,7 +51,7 @@ auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
  unsigned int i22 = y1_offset + x1_offset; // p22
 
  // sample image
- vector4D<unsigned char> result;
+ vector4D<float> result;
 
  // B channel
  float p11 = ptr->data[i11++];
@@ -61,7 +61,7 @@ auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
  float a = p21 - p11;
  float b = p12 - p11;
  float c = p22 - p12 - a;
- result.b = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.b = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // G channel
  p11 = ptr->data[i11++];
@@ -71,7 +71,7 @@ auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
  a = p21 - p11;
  b = p12 - p11;
  c = p22 - p12 - a;
- result.g = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.g = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // R channel
  p11 = ptr->data[i11++];
@@ -81,7 +81,7 @@ auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
  a = p21 - p11;
  b = p12 - p11;
  c = p22 - p12 - a;
- result.r = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.r = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // A channel
  p11 = ptr->data[i11];
@@ -91,7 +91,7 @@ auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
  a = p21 - p11;
  b = p12 - p11;
  c = p22 - p12 - a;
- result.a = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.a = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  return result;
 };
@@ -139,7 +139,7 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  unsigned int i22 = y1_offset + x1_offset; // p22
 
  // sample image
- vector4D<unsigned char> result;
+ vector4D<float> result;
 
  // B channel
  float p11 = ptr->data[i11++];
@@ -149,7 +149,7 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  float a = p21 - p11;
  float b = p12 - p11;
  float c = p22 - p12 - a;
- result.b = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.b = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // G channel
  p11 = ptr->data[i11++];
@@ -159,7 +159,7 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  a = p21 - p11;
  b = p12 - p11;
  c = p22 - p12 - a;
- result.g = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.g = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // R channel
  p11 = ptr->data[i11];
@@ -169,10 +169,10 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  a = p21 - p11;
  b = p12 - p11;
  c = p22 - p12 - a;
- result.r = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.r = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // A channel
- result.a = 255;
+ result.a = 1.0f;
  return result;
 
  // // obtain image coordinates from UV
@@ -234,7 +234,7 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  unsigned int i22 = y1_offset + x1_offset; // p22
 
  // sample image
- vector4D<unsigned char> result;
+ vector4D<float> result;
 
  // B channel
  float p11 = ptr->data[i11++];
@@ -244,7 +244,7 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  float a = p21 - p11;
  float b = p12 - p11;
  float c = p22 - p12 - a;
- result.b = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.b = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // G channel
  p11 = ptr->data[i11++];
@@ -254,7 +254,7 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  a = p21 - p11;
  b = p12 - p11;
  c = p22 - p12 - a;
- result.g = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.g = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // R channel
  p11 = ptr->data[i11];
@@ -264,10 +264,10 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  a = p21 - p11;
  b = p12 - p11;
  c = p22 - p12 - a;
- result.r = static_cast<unsigned char>(a*x + b*y + c*xy + p11);
+ result.r = (static_cast<unsigned char>(a*x + b*y + c*xy + p11))/255.0f;
 
  // A channel
- result.a = 255;
+ result.a = 1.0f;
  return result;
 
  // // obtain image coordinates from UV
@@ -377,7 +377,7 @@ bool XNATextureManager::LoadTexture(const wchar_t* filename, XNATextureData** ou
     else return error("", __FILE__, __LINE__);
 
     // assign sampler
-    std::function<vector4D<unsigned char>(XNATextureData*, float, float)> sampler;
+    std::function<vector4D<float>(XNATextureData*, float, float)> sampler;
     switch(format) {
       case(XNATextureFormat::BGR)  : sampler = sampler_BGR;  break;
       case(XNATextureFormat::BGRX) : sampler = sampler_BGRX; break;

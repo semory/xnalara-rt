@@ -14,7 +14,18 @@ struct XNAMesh;
 struct XNAModel;
 
 // typedefs
-typedef vector4D<unsigned char> (*XNAShadeFunction)(const XNAMesh&, const uint32_t*, const ray3D&, float, float, float);
+typedef vector4D<float> (*XNAShadeFunction)(const XNAMesh&, const uint32_t*, const ray3D&, float, float, float);
+
+struct XNAShaderData {
+ const XNAModel* model;
+ const XNAGlobalFace* face;
+ const XNAVertex* v0;
+ const XNAVertex* v1;
+ const XNAVertex* v2;
+ const ray3D* ray;
+ float t, u, v, w;
+};
+typedef vector4D<float> (*XNAShader)(const XNAShaderData*);
 
 struct XNAHeader {
  unsigned int magic;
@@ -36,7 +47,7 @@ struct XNABone {
 struct XNAVertex {
  float position[3];
  float normal[3];
- unsigned char color[4];
+ float color[4];
  float uv[2][2];
  float tangent[2][4];
  unsigned short blendindices[4];
@@ -68,6 +79,8 @@ struct XNAMeshParams {
  float params[3];
  std::vector<std::wstring> pivots;
  XNAShadeFunction shader;
+ XNAShader shader2;
+ uint8_t alpha;
 };
 
 struct XNAMesh {

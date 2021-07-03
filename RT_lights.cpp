@@ -4,12 +4,12 @@
 
 static DirectionalLight lightlist[3];
 
-void ComputeLightDirection(vector3D<float>& D, float horz, float vert)
+void ComputeLightDirection(float* D, float horz, float vert)
 {
  float r1 = radians(horz);
  float r2 = radians(vert);
  float m[16];
- RotationMatrix4D_YZ(m, r1, r2); // order is Z then Y
+ RotationMatrix4D_YZ(m, r1, -r2); // order is Z (vert) then Y (horz)
  float v[3] = { 1.0f, 0.0f, 0.0f };
  float x[3];
  Matrix4DVector3DMul(x, m, v);

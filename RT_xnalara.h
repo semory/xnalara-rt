@@ -13,9 +13,7 @@ struct XNAMeshParams;
 struct XNAMesh;
 struct XNAModel;
 
-// typedefs
-typedef vector4D<float> (*XNAShadeFunction)(const XNAMesh&, const uint32_t*, const ray3D&, float, float, float);
-
+// shader input
 struct XNAShaderData {
  const XNAModel* model;
  const XNAGlobalFace* face;
@@ -78,8 +76,7 @@ struct XNAMeshParams {
  std::wstring name;
  float params[3];
  std::vector<std::wstring> pivots;
- XNAShadeFunction shader;
- XNAShader shader2;
+ XNAShader shader;
  uint8_t alpha;
 };
 

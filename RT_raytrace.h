@@ -1,6 +1,16 @@
 #ifndef __RT_RAYTRACE_H
 #define __RT_RAYTRACE_H
 
+struct DirectionalLight {
+ bool enabled;
+ float angle_horz;
+ float angle_vert;
+ float direction[3];
+ float color[4];
+ float intensity;
+ float shadow_depth;
+};
+
 // timing functions
 bool SetTraceTiming(bool state);
 bool GetTraceTiming(void);
@@ -9,7 +19,8 @@ bool GetTraceTiming(void);
 void InitCamera(void);
 
 // lighting functions
-void InitLights2(void);
+void ComputeLightDirection(float* D, float horz, float vert);
+void InitLights(void);
 void ResetLight(int index);
 
 // shading functions

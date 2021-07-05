@@ -24,21 +24,10 @@ class RTDynamicBVH {
    uint8_t flags2;
   };
   std::vector<RTNode> tree;
- private :
-  ray3D test;
-  DepthTest* dt;
-  void traverse(const RTNode& node)const;
  public :
   void construct(XNAModel* src);
   void rebuild(void);
   void clear(void);
- public :
-  void set_depth_test(DepthTest* ptr) { dt = ptr; }
-  bool raytest(const ray3D& ray);
- public :
-  void traverse2(const RTNode& node)const;
-  bool raytest2(const ray3D& ray);
- public :
   size_t nodes(void)const { return tree.size(); }
  public :
   RTDynamicBVH();

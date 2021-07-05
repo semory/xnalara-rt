@@ -118,6 +118,13 @@ void InitCamera(void)
  fovy = 30.0f;
 }
 
+void SetCameraPosition(float x, float y, float z)
+{
+ E[0] = x;
+ E[1] = y;
+ E[2] = z;
+}
+
 #pragma endregion CAMERA
 
 #pragma region LIGHTS
@@ -379,7 +386,7 @@ bool Trace(const wchar_t* filename)
                      {
                       // face must be visible
                       const XNAGlobalFace& face = bvh.model->facelist[node.face_index + i];
-                      // if(bvh.model->meshlist[face.mesh_index].params.optional[1] == false) continue;
+                      if(bvh.model->meshlist[face.mesh_index].params.optional[1] == false) continue;
 
                       // must have shader
                       auto shader = bvh.model->meshlist[face.mesh_index].params.shader;
@@ -728,7 +735,7 @@ float ShadowTest(const RTDynamicBVH& bvh, const float* hp, const float* ld)
              {
               // face must be visible
               const XNAGlobalFace& face = bvh.model->facelist[node.face_index + i];
-              // if(bvh.model->meshlist[face.mesh_index].params.optional[1] == false) continue;
+              if(bvh.model->meshlist[face.mesh_index].params.optional[1] == false) continue;
 
               // intersect test
               ray3D_triangle3D_intersect_result result;
@@ -2526,238 +2533,25 @@ vector4D<float> RG25(const XNAShaderData* input)
 
 vector4D<float> RG26(const XNAShaderData* input)
 {
- // RG27
- //	3-4 textures: diffuse, bumpmap, environment map, maskmap
- //	Alpha: N
- // Posing: Y
- // Shading: Y
- // Parameters:	ReflectionAmount
- // Notes: Metallic
- // XNALaraShader: ?
-
- // mesh and triangle vertices
- const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
- const XNAVertex* v0 = input->v0;
- const XNAVertex* v1 = input->v1;
- const XNAVertex* v2 = input->v2;
-
- // interpolated normal
- float N[3];
- float N_norm = InterpolateNormal(input, N);
-
- // interpolated UV coordinates
- float uv[2][2];
- InterpolateUV(input, uv);
-
- // interpolated color
- float color[3];
- InterpolateColor3D(input, color);
-
- //
- // DIFFUSE MAPPING
- //
-
- // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, 0, uv);
- else DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
- DM_sample.a = 1.0f;
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
-
- //
- // NORMAL MAPPING
- //
-
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[1].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, 1, uv);
-       float N_unperturbed[3] = {
-        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
-
- //
- // LIGHTING
- //
-
- if(enable_shading)
-   {
-    // wo is "from hit-point to camera"
-    vector3D<float> wo;
-    wo[0] = -input->ray->direction[0];
-    wo[1] = -input->ray->direction[1];
-    wo[2] = -input->ray->direction[2];
-
-    vector3D<float> L;
-    L[0] = 0.0f;
-    L[1] = 0.0f;
-    L[2] = 0.0f;
-
-    // factors
-    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f); // energy conserving
-    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
-    float specular_intensity = (enable_EM ? 1.0f : mesh.params.params[0]);
-    if(!enable_SM) specular_intensity = 0.0f;
-
-    // for each light
-    for(uint32_t i = 0; i < 3; i++)
-       {
-        // light disabled
-        const DirectionalLight& dlight = lightlist[i];
-        if(!dlight.enabled) continue;
-    
-        // wi is normalized vector "from hit point to light"
-        vector3D<float> wi;
-        wi[0] = -dlight.direction[0];
-        wi[1] = -dlight.direction[1];
-        wi[2] = -dlight.direction[2];
-    
-        // dot products
-        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
-        float dot2 = 2.0f*dot1;
-
-        // if light intensity is not zero
-        if(dot1 > 1.0e-6f)
-          {
-           // shadow test
-           float scale = 1.0f;
-           if(enable_shadows) {
-              // interpolated hitpoint
-              float hitpoint[3] = {
-               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
-               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
-               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
-              };
-              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
-             }
-           if(scale)
-             {
-              // wr is normalized reflection vector
-              vector3D<float> wr;
-              wr[0] = -wi[0] + dot2*N[0];
-              wr[1] = -wi[1] + dot2*N[1];
-              wr[2] = -wi[2] + dot2*N[2];
-              vector3D_normalize(&wr[0]);
-           
-              // compute specular component
-              vector3D<float> specular;
-              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
-              specular[0] = Saturate(std::pow(reflection_angle, specular_power));
-              specular[1] = Saturate(std::pow(reflection_angle, specular_power));
-              specular[2] = Saturate(std::pow(reflection_angle, specular_power));
-           
-              // color components
-              float ccd[3] = { // diffuse
-               dlight.color[0]*dot1*dlight.intensity,
-               dlight.color[1]*dot1*dlight.intensity,
-               dlight.color[2]*dot1*dlight.intensity
-              };
-              float ccs[3] = { // specular
-               dlight.color[0]*dot1*specular_intensity,
-               dlight.color[1]*dot1*specular_intensity,
-               dlight.color[2]*dot1*specular_intensity
-              };
-           
-              // sum components (page 282, equations 15.7 and 15.8 in book)
-              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular[0]*ccs[0]);
-              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular[1]*ccs[1]);
-              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular[2]*ccs[2]);
-             }
-          }
-       }
-
-    // ambient + all light contributions
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
-   }
-
- //
- // ENVIRONMENT MAPPING
- //
-
- if(enable_EM)
-   {
-    // compute sphere map UV
-    float scale = vector3D_scalar_product(input->ray->direction, N);
-    float reflection[3] = {
-     input->ray->direction[0] - 2.0f*scale*N[0],
-     input->ray->direction[1] - 2.0f*scale*N[1],
-     input->ray->direction[2] - 2.0f*scale*N[2]
-    };
-    vector3D_normalize(reflection);
-    float denom = sqrt(vector3D_squared_norm(reflection) + 2.0f*reflection[2] + 1.0f);
-    float tu = 0.5f*reflection[0]/denom + 0.5f;
-    float tv = 0.5f*reflection[1]/denom - 0.5f;
-
-    // sample texture using computed sphere map UV
-    auto EM_sample = SampleTexture(mesh.textures[2], tu, tv);
-    auto MM_sample = SampleTexture(mesh, 3, uv);
-
-    // interpolate
-    DM_sample.r = DM_sample.r + mesh.params.params[0]*(EM_sample.r - DM_sample.r)*MM_sample.r;
-    DM_sample.g = DM_sample.g + mesh.params.params[0]*(EM_sample.g - DM_sample.g)*MM_sample.g;
-    DM_sample.b = DM_sample.b + mesh.params.params[0]*(EM_sample.b - DM_sample.b)*MM_sample.b;
-   }
-
- // finished
- return DM_sample;
+ // same as RG27 but without alpha
+ vector4D<float> rv = RG27(input);
+ rv.a = 1.0f;
+ return rv;
 }
 
 vector4D<float> RG27(const XNAShaderData* input)
 {
- // RG27
- //	3-4 textures: diffuse, bumpmap, environment map, maskmap
- //	Alpha: Y
- // Posing: Y
- // Shading: Y
- // Parameters:	ReflectionAmount
- // Notes: Same as RG26 but with alpha
- // XNALaraShader: ?
+ // NOTE: In the original XNALara "MetallicPS" shader, they do lighting first and
+ // then multiply the diffuse color by the resulting phong shading color second.
+ // Normal and reflection mapping come in as the 3rd and 4th steps, respectively.
+ // For now, I am going to do this in normal order... diffuse, normal, shading,
+ // and then reflection.
+
+ // texture indices
+ constexpr int DM_index = 0;
+ constexpr int BM_index = 1;
+ constexpr int EM_index = 2;
+ constexpr int MM_index = 3;
 
  // mesh and triangle vertices
  const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
@@ -2783,7 +2577,7 @@ vector4D<float> RG27(const XNAShaderData* input)
 
  // diffuse sample
  vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, 0, uv);
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
  else {
     DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
     DM_sample.a = 1.0f;
@@ -2802,7 +2596,7 @@ vector4D<float> RG27(const XNAShaderData* input)
  if(enable_BM)
    {
     // face UVs and edges
-    uint32_t channel = mesh.textures[1].channel;
+    uint32_t channel = mesh.textures[BM_index].channel;
     vector2D<float> uv0(v0->uv[channel]);
     vector2D<float> uv1(v1->uv[channel]);
     vector2D<float> uv2(v2->uv[channel]);
@@ -2828,7 +2622,7 @@ vector4D<float> RG27(const XNAShaderData* input)
        vector3D_normalize(B);
 
        // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, 1, uv);
+       auto NM_sample = SampleTexture(mesh, BM_index, uv);
        float N_unperturbed[3] = {
         NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
         NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
@@ -2962,13 +2756,14 @@ vector4D<float> RG27(const XNAShaderData* input)
     float tv = 0.5f*reflection[1]/denom - 0.5f;
 
     // sample texture using computed sphere map UV
-    auto EM_sample = SampleTexture(mesh.textures[2], tu, tv);
-    auto MM_sample = SampleTexture(mesh, 3, uv);
+    auto EM_sample = SampleTexture(mesh.textures[EM_index], tu, tv);
+    auto MM_sample = SampleTexture(mesh, MM_index, uv);
 
     // interpolate
-    DM_sample.r = DM_sample.r + mesh.params.params[0]*(EM_sample.r - DM_sample.r)*MM_sample.r;
-    DM_sample.g = DM_sample.g + mesh.params.params[0]*(EM_sample.g - DM_sample.g)*MM_sample.g;
-    DM_sample.b = DM_sample.b + mesh.params.params[0]*(EM_sample.b - DM_sample.b)*MM_sample.b;
+    float kr = mesh.params.params[0]; // 0.0 = no reflection, 1.0 = full reflection
+    DM_sample.r = DM_sample.r + kr*(EM_sample.r - DM_sample.r)*MM_sample.r;
+    DM_sample.g = DM_sample.g + kr*(EM_sample.g - DM_sample.g)*MM_sample.g;
+    DM_sample.b = DM_sample.b + kr*(EM_sample.b - DM_sample.b)*MM_sample.b;
    }
 
  // finished
@@ -2977,243 +2772,22 @@ vector4D<float> RG27(const XNAShaderData* input)
 
 vector4D<float> RG28(const XNAShaderData* input)
 {
- // RG28
- //	6 textures: diffuse, bumpmap, maskmap, repeater, repeater, environment map
- //	Alpha: N
- // Posing: Y
- // Shading: Y
- // Parameters:	ReflectionAmount, BumpSpecularAmount, BumpUVScale
- // Notes: Metallic
- // XNALaraShader: ?
-
- // mesh and triangle vertices
- const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
- const XNAVertex* v0 = input->v0;
- const XNAVertex* v1 = input->v1;
- const XNAVertex* v2 = input->v2;
-
- // interpolated normal
- float N[3];
- float N_norm = InterpolateNormal(input, N);
-
- // interpolated UV coordinates
- float uv[2][2];
- InterpolateUV(input, uv);
-
- // interpolated color
- float color[3];
- InterpolateColor3D(input, color);
-
- //
- // DIFFUSE MAPPING
- //
-
- // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, 0, uv);
- else DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
- DM_sample.a = 1.0f;
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
-
- //
- // NORMAL MAPPING
- //
-
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[1].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample textures
-       auto NM_sample = SampleTexture(mesh, 1, uv);
-       auto MM_sample = SampleTexture(mesh, 2, uv);
-       auto R1_sample = SampleTexture(mesh, 3, uv, mesh.params.params[2]);
-       auto R2_sample = SampleTexture(mesh, 4, uv, mesh.params.params[2]);
-
-       // combine bumpmap colors
-       // note that NM, R1, and R2 can use different UV layers, but the tangent space
-       // normal mapping uses the UV layer specified by the NM texture.
-       float final_bump[3];
-       final_bump[0] = NM_sample.r + (R1_sample.r - 0.5f)*MM_sample.r + (R2_sample.r - 0.5f)*MM_sample.g;
-       final_bump[1] = NM_sample.g + (R1_sample.g - 0.5f)*MM_sample.r + (R2_sample.g - 0.5f)*MM_sample.g;
-       final_bump[2] = NM_sample.b + (R1_sample.b - 0.5f)*MM_sample.r + (R2_sample.b - 0.5f)*MM_sample.g;
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       float N_unperturbed[3] = {
-        final_bump[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
-
- //
- // LIGHTING
- //
-
- if(enable_shading)
-   {
-    // wo is "from hit-point to camera"
-    vector3D<float> wo;
-    wo[0] = -input->ray->direction[0];
-    wo[1] = -input->ray->direction[1];
-    wo[2] = -input->ray->direction[2];
-
-    vector3D<float> L;
-    L[0] = 0.0f;
-    L[1] = 0.0f;
-    L[2] = 0.0f;
-
-    // factors
-    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f); // energy conserving
-    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
-    float specular_intensity = mesh.params.params[1];
-    if(!enable_SM) specular_intensity = 0.0f;
-
-    // for each light
-    for(uint32_t i = 0; i < 3; i++)
-       {
-        // light disabled
-        const DirectionalLight& dlight = lightlist[i];
-        if(!dlight.enabled) continue;
-    
-        // wi is normalized vector "from hit point to light"
-        vector3D<float> wi;
-        wi[0] = -dlight.direction[0];
-        wi[1] = -dlight.direction[1];
-        wi[2] = -dlight.direction[2];
-    
-        // dot products
-        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
-        float dot2 = 2.0f*dot1;
-
-        // if light intensity is not zero
-        if(dot1 > 1.0e-6f)
-          {
-           // shadow test
-           float scale = 1.0f;
-           if(enable_shadows) {
-              // interpolated hitpoint
-              float hitpoint[3] = {
-               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
-               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
-               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
-              };
-              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
-             }
-           if(scale)
-             {
-              // wr is normalized reflection vector
-              vector3D<float> wr;
-              wr[0] = -wi[0] + dot2*N[0];
-              wr[1] = -wi[1] + dot2*N[1];
-              wr[2] = -wi[2] + dot2*N[2];
-              vector3D_normalize(&wr[0]);
-           
-              // compute specular component
-              vector3D<float> specular;
-              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
-              specular[0] = Saturate(std::pow(reflection_angle, specular_power));
-              specular[1] = Saturate(std::pow(reflection_angle, specular_power));
-              specular[2] = Saturate(std::pow(reflection_angle, specular_power));
-           
-              // color components
-              float ccd[3] = { // diffuse
-               dlight.color[0]*dot1*dlight.intensity,
-               dlight.color[1]*dot1*dlight.intensity,
-               dlight.color[2]*dot1*dlight.intensity
-              };
-              float ccs[3] = { // specular
-               dlight.color[0]*dot1*specular_intensity,
-               dlight.color[1]*dot1*specular_intensity,
-               dlight.color[2]*dot1*specular_intensity
-              };
-           
-              // sum components (page 282, equations 15.7 and 15.8 in book)
-              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular[0]*ccs[0]);
-              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular[1]*ccs[1]);
-              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular[2]*ccs[2]);
-             }
-          }
-       }
-
-    // ambient + all light contributions
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
-   }
-
- //
- // ENVIRONMENT MAPPING
- //
-
- if(enable_EM)
-   {
-    // compute sphere map UV
-    float scale = vector3D_scalar_product(input->ray->direction, N);
-    float reflection[3] = {
-     input->ray->direction[0] - 2.0f*scale*N[0],
-     input->ray->direction[1] - 2.0f*scale*N[1],
-     input->ray->direction[2] - 2.0f*scale*N[2]
-    };
-    vector3D_normalize(reflection);
-    float denom = sqrt(vector3D_squared_norm(reflection) + 2.0f*reflection[2] + 1.0f);
-    float tu = 0.5f*reflection[0]/denom + 0.5f;
-    float tv = 0.5f*reflection[1]/denom - 0.5f;
-
-    // sample texture using computed sphere map UV
-    const XNATexture& texture = mesh.textures[5];
-    auto EM_sample = SampleTexture(texture, tu, tv);
-
-    // interpolate
-    DM_sample.r = DM_sample.r + mesh.params.params[0]*(EM_sample.r - DM_sample.r);
-    DM_sample.g = DM_sample.g + mesh.params.params[0]*(EM_sample.g - DM_sample.g);
-    DM_sample.b = DM_sample.b + mesh.params.params[0]*(EM_sample.b - DM_sample.b);
-   }
-
- // finished
- return DM_sample;
+ // same as RG29 but without alpha
+ vector4D<float> rv = RG29(input);
+ rv.a = 1.0f;
+ return rv;
 }
 
 vector4D<float> RG29(const XNAShaderData* input)
 {
+ // texture indices
+ constexpr int DM_index = 0;
+ constexpr int BM_index = 1;
+ constexpr int MM_index = 2;
+ constexpr int R1_index = 3;
+ constexpr int R2_index = 4;
+ constexpr int EM_index = 5;
+
  // RG29
  //	6 textures: diffuse, bumpmap, maskmap, repeater, repeater, environment map
  //	Alpha: Y
@@ -3247,7 +2821,7 @@ vector4D<float> RG29(const XNAShaderData* input)
 
  // diffuse sample
  vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, 0, uv);
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
  else {
     DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
     DM_sample.a = 1.0f;
@@ -3266,7 +2840,7 @@ vector4D<float> RG29(const XNAShaderData* input)
  if(enable_BM)
    {
     // face UVs and edges
-    uint32_t channel = mesh.textures[1].channel;
+    uint32_t channel = mesh.textures[BM_index].channel;
     vector2D<float> uv0(v0->uv[channel]);
     vector2D<float> uv1(v1->uv[channel]);
     vector2D<float> uv2(v2->uv[channel]);
@@ -3292,10 +2866,10 @@ vector4D<float> RG29(const XNAShaderData* input)
        vector3D_normalize(B);
 
        // sample textures
-       auto NM_sample = SampleTexture(mesh, 1, uv);
-       auto MM_sample = SampleTexture(mesh, 2, uv);
-       auto R1_sample = SampleTexture(mesh, 3, uv, mesh.params.params[2]);
-       auto R2_sample = SampleTexture(mesh, 4, uv, mesh.params.params[2]);
+       auto NM_sample = SampleTexture(mesh, BM_index, uv);
+       auto MM_sample = SampleTexture(mesh, MM_index, uv);
+       auto R1_sample = SampleTexture(mesh, R1_index, uv, mesh.params.params[2]);
+       auto R2_sample = SampleTexture(mesh, R2_index, uv, mesh.params.params[2]);
 
        // combine bumpmap colors
        // note that NM, R1, and R2 can use different UV layers, but the tangent space
@@ -3388,11 +2962,833 @@ vector4D<float> RG29(const XNAShaderData* input)
               vector3D_normalize(&wr[0]);
            
               // compute specular component
+              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
+              float specular = Saturate(std::pow(reflection_angle, specular_power));
+           
+              // color components
+              float ccd[3] = { // diffuse
+               dlight.color[0]*dot1*dlight.intensity,
+               dlight.color[1]*dot1*dlight.intensity,
+               dlight.color[2]*dot1*dlight.intensity
+              };
+              float ccs[3] = { // specular
+               dlight.color[0]*dot1*specular_intensity,
+               dlight.color[1]*dot1*specular_intensity,
+               dlight.color[2]*dot1*specular_intensity
+              };
+           
+              // sum components (page 282, equations 15.7 and 15.8 in book)
+              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular*ccs[0]);
+              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular*ccs[1]);
+              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular*ccs[2]);
+             }
+          }
+       }
+
+    // ambient + all light contributions
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+   }
+
+ //
+ // ENVIRONMENT MAPPING
+ //
+
+ if(enable_EM)
+   {
+    // compute sphere map UV and sample texture
+    float scale = vector3D_scalar_product(input->ray->direction, N);
+    float reflection[3] = {
+     input->ray->direction[0] - 2.0f*scale*N[0],
+     input->ray->direction[1] - 2.0f*scale*N[1],
+     input->ray->direction[2] - 2.0f*scale*N[2]
+    };
+    vector3D_normalize(reflection);
+    float denom = sqrt(vector3D_squared_norm(reflection) + 2.0f*reflection[2] + 1.0f);
+    float tu = 0.5f*reflection[0]/denom + 0.5f;
+    float tv = 0.5f*reflection[1]/denom - 0.5f;
+    auto EM_sample = SampleTexture(mesh.textures[EM_index], tu, tv);
+
+    // interpolate
+    float kr = mesh.params.params[0]; // 0.0 = no reflection, 1.0 = full reflection
+    DM_sample.r = DM_sample.r + kr*(EM_sample.r - DM_sample.r);
+    DM_sample.g = DM_sample.g + kr*(EM_sample.g - DM_sample.g);
+    DM_sample.b = DM_sample.b + kr*(EM_sample.b - DM_sample.b);
+   }
+
+ // finished
+ return DM_sample;
+}
+
+vector4D<float> RG30(const XNAShaderData* input)
+{
+ // same as RG31 but without alpha
+ vector4D<float> rv = RG31(input);
+ rv.a = 1.0f;
+ return rv;
+}
+
+vector4D<float> RG31(const XNAShaderData* input)
+{
+ // texture indices
+ constexpr int DM_index = 0;
+ constexpr int BM_index = 1;
+ constexpr int GM_index = 2;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated normal
+ float N[3];
+ float N_norm = InterpolateNormal(input, N);
+
+ // interpolated UV coordinates
+ float uv[2][2];
+ InterpolateUV(input, uv);
+
+ // interpolated color
+ float color[4];
+ InterpolateColor4D(input, color);
+
+ //
+ // DIFFUSE MAPPING
+ //
+
+ // diffuse sample
+ vector4D<float> DM_sample;
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
+ else {
+    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
+    DM_sample.a = 1.0f;
+   }
+
+ // multiply by color data
+ DM_sample[0] *= color[0];
+ DM_sample[1] *= color[1];
+ DM_sample[2] *= color[2];
+ DM_sample[3] *= color[3];
+
+ //
+ // NORMAL MAPPING
+ //
+
+ if(enable_BM)
+   {
+    // face UVs and edges
+    uint32_t channel = mesh.textures[BM_index].channel;
+    vector2D<float> uv0(v0->uv[channel]);
+    vector2D<float> uv1(v1->uv[channel]);
+    vector2D<float> uv2(v2->uv[channel]);
+    vector2D<float> tea = uv1 - uv0;
+    vector2D<float> teb = uv2 - uv0;
+
+    // you can't bump map degenerate UVs
+    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
+    if(!(std::abs(scale) < 1.0e-6f))
+      {
+       // interpolated tangent
+       float T[4];
+       float T_norm = InterpolateTangent(input, channel, N, T);
+
+       // N = T cross B (Z = X x Y)
+       // T = B cross N (X = Y x Z)
+       // B = N cross T (Y = Z x X)
+       float B[3];
+       vector3D_vector_product(B, N, T);
+       B[0] *= T[3]; // for mirrored UVs
+       B[1] *= T[3]; // for mirrored UVs
+       B[2] *= T[3]; // for mirrored UVs
+       vector3D_normalize(B);
+
+       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
+       auto NM_sample = SampleTexture(mesh, BM_index, uv);
+       float N_unperturbed[3] = {
+        NM_sample[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
+       };
+       vector3D_normalize(N_unperturbed);
+
+       // rotate normal
+       // T[0] B[0] N[0] * N[0]
+       // T[1] B[1] B[1] * N[1]
+       // T[2] B[2] N[2] * N[2e]
+       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
+       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
+       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
+       vector3D_normalize(N);
+      }
+   }
+
+ //
+ // LIGHTING
+ //
+
+ if(enable_shading)
+   {
+    // wo is "from hit-point to camera"
+    vector3D<float> wo;
+    wo[0] = -input->ray->direction[0];
+    wo[1] = -input->ray->direction[1];
+    wo[2] = -input->ray->direction[2];
+
+    vector3D<float> L;
+    L[0] = 0.0f;
+    L[1] = 0.0f;
+    L[2] = 0.0f;
+
+    // factors
+    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f);
+    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
+    float specular_intensity = mesh.params.params[0];
+    if(!enable_SM) specular_intensity = 0.0f;
+
+    // for each light
+    for(uint32_t i = 0; i < 3; i++)
+       {
+        // light disabled
+        const DirectionalLight& dlight = lightlist[i];
+        if(!dlight.enabled) continue;
+    
+        // wi is normalized vector "from hit point to light"
+        vector3D<float> wi;
+        wi[0] = -dlight.direction[0];
+        wi[1] = -dlight.direction[1];
+        wi[2] = -dlight.direction[2];
+    
+        // dot products
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        float dot2 = 2.0f*dot1;
+    
+        // if light intensity is not zero
+        if(dot1 > 1.0e-6f)
+          {
+           // shadow test
+           float scale = 1.0f;
+           if(enable_shadows) {
+              // interpolated hitpoint
+              float hitpoint[3] = {
+               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
+               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
+               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
+              };
+              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
+             }
+           if(scale)
+             {
+              // wr is normalized reflection vector
+              vector3D<float> wr;
+              wr[0] = -wi[0] + dot2*N[0];
+              wr[1] = -wi[1] + dot2*N[1];
+              wr[2] = -wi[2] + dot2*N[2];
+              vector3D_normalize(&wr[0]);
+           
+              // compute specular component
               vector3D<float> specular;
               float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
               specular[0] = Saturate(std::pow(reflection_angle, specular_power));
               specular[1] = Saturate(std::pow(reflection_angle, specular_power));
               specular[2] = Saturate(std::pow(reflection_angle, specular_power));
+           
+              // color components
+              float ccd[3] = { // diffuse
+               dlight.color[0]*dot1*dlight.intensity,
+               dlight.color[1]*dot1*dlight.intensity,
+               dlight.color[2]*dot1*dlight.intensity
+              };
+              float ccs[3] = { // specular
+               dlight.color[0]*dot1*specular_intensity,
+               dlight.color[1]*dot1*specular_intensity,
+               dlight.color[2]*dot1*specular_intensity
+              };
+           
+              // sum components
+              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular[0]*ccs[0]);
+              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular[1]*ccs[1]);
+              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular[2]*ccs[2]);
+             }
+          }
+       }
+
+    // ambient + all light contributions
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+   }
+
+ //
+ // EMISSIVE MAPS
+ //
+
+ // extremely simple shader
+ if(enable_GM) {
+    auto GM_sample = SampleTexture(mesh, GM_index, uv);
+    DM_sample.r = Saturate(DM_sample.r + GM_sample.r);
+    DM_sample.g = Saturate(DM_sample.g + GM_sample.g);
+    DM_sample.b = Saturate(DM_sample.b + GM_sample.b);
+   }
+
+ // finished
+ return DM_sample;
+}
+
+vector4D<float> RG32(const XNAShaderData* input)
+{
+ // same as RG33 but without alpha
+ vector4D<float> rv = RG33(input);
+ rv.a = 1.0f;
+ return rv;
+}
+
+vector4D<float> RG33(const XNAShaderData* input)
+{
+ // texture indices
+ constexpr int DM_index = 0;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated normal
+ float N[3];
+ float N_norm = InterpolateNormal(input, N);
+
+ // interpolated UV coordinates
+ float uv[2][2];
+ InterpolateUV(input, uv);
+
+ // interpolated color
+ float color[4];
+ InterpolateColor4D(input, color);
+
+ //
+ // DIFFUSE MAPPING
+ //
+
+ // diffuse sample
+ vector4D<float> DM_sample;
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
+ else {
+    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
+    DM_sample.a = 1.0f;
+   }
+
+ // multiply by color data
+ DM_sample[0] *= color[0];
+ DM_sample[1] *= color[1];
+ DM_sample[2] *= color[2];
+ DM_sample[3] *= color[3];
+
+ //
+ // LIGHTING
+ //
+
+ if(enable_shading)
+   {
+    // wo is "from hit-point to camera"
+    vector3D<float> wo;
+    wo[0] = -input->ray->direction[0];
+    wo[1] = -input->ray->direction[1];
+    wo[2] = -input->ray->direction[2];
+
+    vector3D<float> L;
+    L[0] = 0.0f;
+    L[1] = 0.0f;
+    L[2] = 0.0f;
+
+    // factors
+    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f);
+    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
+    float specular_intensity = 1.0f;
+
+    // for each light
+    for(uint32_t i = 0; i < 3; i++)
+       {
+        // light disabled
+        const DirectionalLight& dlight = lightlist[i];
+        if(!dlight.enabled) continue;
+    
+        // wi is normalized vector "from hit point to light"
+        vector3D<float> wi;
+        wi[0] = -dlight.direction[0];
+        wi[1] = -dlight.direction[1];
+        wi[2] = -dlight.direction[2];
+    
+        // dot products
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        float dot2 = 2.0f*dot1;
+    
+        // if light intensity is not zero
+        if(dot1 > 1.0e-6f)
+          {
+           // shadow test
+           float scale = 1.0f;
+           if(enable_shadows) {
+              // interpolated hitpoint
+              float hitpoint[3] = {
+               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
+               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
+               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
+              };
+              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
+             }
+           if(scale)
+             {
+              // wr is normalized reflection vector
+              vector3D<float> wr;
+              wr[0] = -wi[0] + dot2*N[0];
+              wr[1] = -wi[1] + dot2*N[1];
+              wr[2] = -wi[2] + dot2*N[2];
+              vector3D_normalize(&wr[0]);
+           
+              // compute specular component
+              vector3D<float> specular;
+              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
+              specular[0] = Saturate(std::pow(reflection_angle, specular_power));
+              specular[1] = Saturate(std::pow(reflection_angle, specular_power));
+              specular[2] = Saturate(std::pow(reflection_angle, specular_power));
+           
+              // color components
+              float ccd[3] = { // diffuse
+               dlight.color[0]*dot1*dlight.intensity,
+               dlight.color[1]*dot1*dlight.intensity,
+               dlight.color[2]*dot1*dlight.intensity
+              };
+              float ccs[3] = { // specular
+               dlight.color[0]*dot1*specular_intensity,
+               dlight.color[1]*dot1*specular_intensity,
+               dlight.color[2]*dot1*specular_intensity
+              };
+           
+              // sum components
+              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular[0]*ccs[0]);
+              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular[1]*ccs[1]);
+              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular[2]*ccs[2]);
+             }
+          }
+       }
+
+    // ambient + all light contributions
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+   }
+
+ // finished
+ return DM_sample;
+}
+
+vector4D<float> RG34(const XNAShaderData* input)
+{
+ // same as RG35 but without alpha
+ vector4D<float> rv = RG35(input);
+ rv.a = 1.0f;
+ return rv;
+}
+
+vector4D<float> RG35(const XNAShaderData* input)
+{
+ return RG00(input);
+}
+
+vector4D<float> RG36(const XNAShaderData* input)
+{
+ // same as RG37 but without alpha
+ vector4D<float> rv = RG37(input);
+ rv.a = 1.0f;
+ return rv;
+}
+
+vector4D<float> RG37(const XNAShaderData* input)
+{
+ // texture indices
+ constexpr int DM_index = 0;
+ constexpr int BM_index = 1;
+ constexpr int GM_index = 2;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated normal
+ float N[3];
+ float N_norm = InterpolateNormal(input, N);
+
+ // interpolated UV coordinates
+ float uv[2][2];
+ InterpolateUV(input, uv);
+
+ // interpolated color
+ float color[4];
+ InterpolateColor4D(input, color);
+
+ //
+ // DIFFUSE MAPPING
+ //
+
+ // diffuse sample
+ vector4D<float> DM_sample;
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
+ else {
+    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
+    DM_sample.a = 1.0f;
+   }
+
+ // multiply by color data
+ DM_sample[0] *= color[0];
+ DM_sample[1] *= color[1];
+ DM_sample[2] *= color[2];
+ DM_sample[3] *= color[3];
+
+ //
+ // NORMAL MAPPING
+ //
+
+ if(enable_BM)
+   {
+    // face UVs and edges
+    uint32_t channel = mesh.textures[BM_index].channel;
+    vector2D<float> uv0(v0->uv[channel]);
+    vector2D<float> uv1(v1->uv[channel]);
+    vector2D<float> uv2(v2->uv[channel]);
+    vector2D<float> tea = uv1 - uv0;
+    vector2D<float> teb = uv2 - uv0;
+
+    // you can't bump map degenerate UVs
+    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
+    if(!(std::abs(scale) < 1.0e-6f))
+      {
+       // interpolated tangent
+       float T[4];
+       float T_norm = InterpolateTangent(input, channel, N, T);
+
+       // N = T cross B (Z = X x Y)
+       // T = B cross N (X = Y x Z)
+       // B = N cross T (Y = Z x X)
+       float B[3];
+       vector3D_vector_product(B, N, T);
+       B[0] *= T[3]; // for mirrored UVs
+       B[1] *= T[3]; // for mirrored UVs
+       B[2] *= T[3]; // for mirrored UVs
+       vector3D_normalize(B);
+
+       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
+       auto NM_sample = SampleTexture(mesh, BM_index, uv);
+       float N_unperturbed[3] = {
+        NM_sample[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
+       };
+       vector3D_normalize(N_unperturbed);
+
+       // rotate normal
+       // T[0] B[0] N[0] * N[0]
+       // T[1] B[1] B[1] * N[1]
+       // T[2] B[2] N[2] * N[2e]
+       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
+       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
+       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
+       vector3D_normalize(N);
+      }
+   }
+
+ //
+ // LIGHTING
+ //
+
+ if(enable_shading)
+   {
+    // wo is "from hit-point to camera"
+    vector3D<float> wo;
+    wo[0] = -input->ray->direction[0];
+    wo[1] = -input->ray->direction[1];
+    wo[2] = -input->ray->direction[2];
+
+    vector3D<float> L;
+    L[0] = 0.0f;
+    L[1] = 0.0f;
+    L[2] = 0.0f;
+
+    // factors
+    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f);
+    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
+    float specular_intensity = mesh.params.params[0];
+    if(!enable_SM) specular_intensity = 0.0f;
+
+    // for each light
+    for(uint32_t i = 0; i < 3; i++)
+       {
+        // light disabled
+        const DirectionalLight& dlight = lightlist[i];
+        if(!dlight.enabled) continue;
+    
+        // wi is normalized vector "from hit point to light"
+        vector3D<float> wi;
+        wi[0] = -dlight.direction[0];
+        wi[1] = -dlight.direction[1];
+        wi[2] = -dlight.direction[2];
+    
+        // dot products
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        float dot2 = 2.0f*dot1;
+    
+        // if light intensity is not zero
+        if(dot1 > 1.0e-6f)
+          {
+           // shadow test
+           float scale = 1.0f;
+           if(enable_shadows) {
+              // interpolated hitpoint
+              float hitpoint[3] = {
+               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
+               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
+               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
+              };
+              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
+             }
+           if(scale)
+             {
+              // wr is normalized reflection vector
+              vector3D<float> wr;
+              wr[0] = -wi[0] + dot2*N[0];
+              wr[1] = -wi[1] + dot2*N[1];
+              wr[2] = -wi[2] + dot2*N[2];
+              vector3D_normalize(&wr[0]);
+           
+              // compute specular component
+              vector3D<float> specular;
+              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
+              specular[0] = Saturate(std::pow(reflection_angle, specular_power));
+              specular[1] = Saturate(std::pow(reflection_angle, specular_power));
+              specular[2] = Saturate(std::pow(reflection_angle, specular_power));
+           
+              // color components
+              float ccd[3] = { // diffuse
+               dlight.color[0]*dot1*dlight.intensity,
+               dlight.color[1]*dot1*dlight.intensity,
+               dlight.color[2]*dot1*dlight.intensity
+              };
+              float ccs[3] = { // specular
+               dlight.color[0]*dot1*specular_intensity,
+               dlight.color[1]*dot1*specular_intensity,
+               dlight.color[2]*dot1*specular_intensity
+              };
+           
+              // sum components
+              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular[0]*ccs[0]);
+              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular[1]*ccs[1]);
+              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular[2]*ccs[2]);
+             }
+          }
+       }
+
+    // ambient + all light contributions
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+   }
+
+ //
+ // EMISSIVE MAPS
+ //
+
+ // extremely simple shader
+ if(enable_GM) {
+    auto GM_sample = SampleTexture(mesh, GM_index, uv, mesh.params.params[1]);
+    DM_sample.r = Saturate(DM_sample.r + GM_sample.r);
+    DM_sample.g = Saturate(DM_sample.g + GM_sample.g);
+    DM_sample.b = Saturate(DM_sample.b + GM_sample.b);
+   }
+
+ // finished
+ return DM_sample;
+}
+
+vector4D<float> RG38(const XNAShaderData* input)
+{
+ // same as RG39 but without alpha
+ vector4D<float> rv = RG39(input);
+ rv.a = 1.0f;
+ return rv;
+}
+
+vector4D<float> RG39(const XNAShaderData* input)
+{
+ // texture indices
+ constexpr int DM_index = 0;
+ constexpr int BM_index = 1;
+ constexpr int SM_index = 2;
+ constexpr int GM_index = 3;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated normal
+ float N[3];
+ float N_norm = InterpolateNormal(input, N);
+
+ // interpolated UV coordinates
+ float uv[2][2];
+ InterpolateUV(input, uv);
+
+ // interpolated color
+ float color[4];
+ InterpolateColor4D(input, color);
+
+ //
+ // DIFFUSE MAPPING
+ //
+
+ // diffuse sample
+ vector4D<float> DM_sample;
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
+ else {
+    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
+    DM_sample.a = 1.0f;
+   }
+
+ // multiply by color data
+ DM_sample[0] *= color[0];
+ DM_sample[1] *= color[1];
+ DM_sample[2] *= color[2];
+ DM_sample[3] *= color[3];
+
+ //
+ // NORMAL MAPPING
+ //
+
+ if(enable_BM)
+   {
+    // face UVs and edges
+    uint32_t channel = mesh.textures[BM_index].channel;
+    vector2D<float> uv0(v0->uv[channel]);
+    vector2D<float> uv1(v1->uv[channel]);
+    vector2D<float> uv2(v2->uv[channel]);
+    vector2D<float> tea = uv1 - uv0;
+    vector2D<float> teb = uv2 - uv0;
+
+    // you can't bump map degenerate UVs
+    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
+    if(!(std::abs(scale) < 1.0e-6f))
+      {
+       // interpolated tangent
+       float T[4];
+       float T_norm = InterpolateTangent(input, channel, N, T);
+
+       // N = T cross B (Z = X x Y)
+       // T = B cross N (X = Y x Z)
+       // B = N cross T (Y = Z x X)
+       float B[3];
+       vector3D_vector_product(B, N, T);
+       B[0] *= T[3]; // for mirrored UVs
+       B[1] *= T[3]; // for mirrored UVs
+       B[2] *= T[3]; // for mirrored UVs
+       vector3D_normalize(B);
+
+       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
+       auto NM_sample = SampleTexture(mesh, BM_index, uv);
+       float N_unperturbed[3] = {
+        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
+       };
+       vector3D_normalize(N_unperturbed);
+
+       // rotate normal
+       // T[0] B[0] N[0] * N[0]
+       // T[1] B[1] B[1] * N[1]
+       // T[2] B[2] N[2] * N[2]
+       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
+       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
+       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
+       vector3D_normalize(N);
+      }
+   }
+
+ //
+ // LIGHTING
+ //
+
+ if(enable_shading)
+   {
+    // wo is "from hit-point to camera"
+    vector3D<float> wo;
+    wo[0] = -input->ray->direction[0];
+    wo[1] = -input->ray->direction[1];
+    wo[2] = -input->ray->direction[2];
+
+    vector3D<float> L;
+    L[0] = 0.0f;
+    L[1] = 0.0f;
+    L[2] = 0.0f;
+
+    // factors
+    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f); // energy conserving
+    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
+    float specular_intensity = mesh.params.params[0];
+    if(!enable_SM) specular_intensity = 0.0f;
+
+    // for each light
+    for(uint32_t i = 0; i < 3; i++)
+       {
+        // light disabled
+        auto dlight = lightlist[i];
+        if(!dlight.enabled) continue;
+    
+        // wi is normalized vector "from hit point to light"
+        vector3D<float> wi;
+        wi[0] = -dlight.direction[0];
+        wi[1] = -dlight.direction[1];
+        wi[2] = -dlight.direction[2];
+    
+        // dot products
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        float dot2 = 2.0f*dot1;
+    
+        // if light intensity is not zero
+        if(dot1 > 1.0e-6f)
+          {
+           // shadow test
+           float scale = 1.0f;
+           if(enable_shadows) {
+              // interpolated hitpoint
+              float hitpoint[3] = {
+               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
+               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
+               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
+              };
+              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
+             }
+           if(scale)
+             {
+              // wr is normalized reflection vector
+              vector3D<float> wr;
+              wr[0] = -wi[0] + dot2*N[0];
+              wr[1] = -wi[1] + dot2*N[1];
+              wr[2] = -wi[2] + dot2*N[2];
+              vector3D_normalize(&wr[0]);
+           
+              // compute specular component
+              vector3D<float> specular;
+              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
+              float factor = Saturate(std::pow(reflection_angle, specular_power));
+
+              // specular map
+              auto SM_sample = SampleTexture(mesh, SM_index, uv);
+              specular.r = factor*SM_sample.r;
+              specular.g = factor*SM_sample.g;
+              specular.b = factor*SM_sample.b;
            
               // color components
               float ccd[3] = { // diffuse
@@ -3421,105 +3817,435 @@ vector4D<float> RG29(const XNAShaderData* input)
    }
 
  //
- // ENVIRONMENT MAPPING
+ // EMISSIVE MAPS
  //
 
- if(enable_EM)
-   {
-    // compute sphere map UV
-    float scale = vector3D_scalar_product(input->ray->direction, N);
-    float reflection[3] = {
-     input->ray->direction[0] - 2.0f*scale*N[0],
-     input->ray->direction[1] - 2.0f*scale*N[1],
-     input->ray->direction[2] - 2.0f*scale*N[2]
-    };
-    vector3D_normalize(reflection);
-    float denom = sqrt(vector3D_squared_norm(reflection) + 2.0f*reflection[2] + 1.0f);
-    float tu = 0.5f*reflection[0]/denom + 0.5f;
-    float tv = 0.5f*reflection[1]/denom - 0.5f;
-
-    // sample texture using computed sphere map UV
-    const XNATexture& texture = mesh.textures[5];
-    auto EM_sample = SampleTexture(texture, tu, tv);
-
-    // interpolate
-    DM_sample.r = DM_sample.r + mesh.params.params[0]*(EM_sample.r - DM_sample.r);
-    DM_sample.g = DM_sample.g + mesh.params.params[0]*(EM_sample.g - DM_sample.g);
-    DM_sample.b = DM_sample.b + mesh.params.params[0]*(EM_sample.b - DM_sample.b);
+ // extremely simple shader
+ if(enable_GM) {
+    auto GM_sample = SampleTexture(mesh, GM_index, uv);
+    DM_sample.r = Saturate(DM_sample.r + GM_sample.r);
+    DM_sample.g = Saturate(DM_sample.g + GM_sample.g);
+    DM_sample.b = Saturate(DM_sample.b + GM_sample.b);
    }
 
  // finished
  return DM_sample;
 }
 
-vector4D<float> RG30(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG31(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG32(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG33(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG34(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG35(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG36(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG37(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG38(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
-vector4D<float> RG39(const XNAShaderData* input)
-{
- return RG00(input);
-}
-
 vector4D<float> RG40(const XNAShaderData* input)
 {
- return RG00(input);
+ // same as RG41 but without alpha
+ vector4D<float> rv = RG41(input);
+ rv.a = 1.0f;
+ return rv;
 }
 
 vector4D<float> RG41(const XNAShaderData* input)
 {
- return RG00(input);
+ // NOTE: For RG41, the normal map format is different.
+
+ // texture indices
+ constexpr int DM_index = 0;
+ constexpr int BM_index = 1;
+ constexpr int SM_index = 2;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated normal
+ float N[3];
+ float N_norm = InterpolateNormal(input, N);
+
+ // interpolated UV coordinates
+ float uv[2][2];
+ InterpolateUV(input, uv);
+
+ // interpolated color
+ float color[4];
+ InterpolateColor4D(input, color);
+
+ //
+ // DIFFUSE MAPPING
+ //
+
+ // diffuse sample
+ vector4D<float> DM_sample;
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
+ else {
+    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
+    DM_sample.a = 1.0f;
+   }
+
+ // multiply by color data
+ DM_sample[0] *= color[0];
+ DM_sample[1] *= color[1];
+ DM_sample[2] *= color[2];
+ DM_sample[3] *= color[3];
+
+ //
+ // NORMAL MAPPING
+ //
+
+ if(enable_BM)
+   {
+    // face UVs and edges
+    uint32_t channel = mesh.textures[BM_index].channel;
+    vector2D<float> uv0(v0->uv[channel]);
+    vector2D<float> uv1(v1->uv[channel]);
+    vector2D<float> uv2(v2->uv[channel]);
+    vector2D<float> tea = uv1 - uv0;
+    vector2D<float> teb = uv2 - uv0;
+
+    // you can't bump map degenerate UVs
+    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
+    if(!(std::abs(scale) < 1.0e-6f))
+      {
+       // interpolated tangent
+       float T[4];
+       float T_norm = InterpolateTangent(input, channel, N, T);
+
+       // N = T cross B (Z = X x Y)
+       // T = B cross N (X = Y x Z)
+       // B = N cross T (Y = Z x X)
+       float B[3];
+       vector3D_vector_product(B, N, T);
+       B[0] *= T[3]; // for mirrored UVs
+       B[1] *= T[3]; // for mirrored UVs
+       B[2] *= T[3]; // for mirrored UVs
+       vector3D_normalize(B);
+
+       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
+       auto NM_sample = SampleTexture(mesh, BM_index, uv);
+       float N_unperturbed[3] = {
+        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
+       };
+       vector3D_normalize(N_unperturbed);
+
+       // rotate normal
+       // T[0] B[0] N[0] * N[0]
+       // T[1] B[1] B[1] * N[1]
+       // T[2] B[2] N[2] * N[2]
+       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
+       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
+       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
+       vector3D_normalize(N);
+      }
+   }
+
+ //
+ // LIGHTING
+ //
+
+ if(enable_shading)
+   {
+    // wo is "from hit-point to camera"
+    vector3D<float> wo;
+    wo[0] = -input->ray->direction[0];
+    wo[1] = -input->ray->direction[1];
+    wo[2] = -input->ray->direction[2];
+
+    vector3D<float> L;
+    L[0] = 0.0f;
+    L[1] = 0.0f;
+    L[2] = 0.0f;
+
+    // factors
+    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f); // energy conserving
+    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
+    float specular_intensity = mesh.params.params[0];
+    if(!enable_SM) specular_intensity = 0.0f;
+
+    // for each light
+    for(uint32_t i = 0; i < 3; i++)
+       {
+        // light disabled
+        auto dlight = lightlist[i];
+        if(!dlight.enabled) continue;
+    
+        // wi is normalized vector "from hit point to light"
+        vector3D<float> wi;
+        wi[0] = -dlight.direction[0];
+        wi[1] = -dlight.direction[1];
+        wi[2] = -dlight.direction[2];
+    
+        // dot products
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        float dot2 = 2.0f*dot1;
+    
+        // if light intensity is not zero
+        if(dot1 > 1.0e-6f)
+          {
+           // shadow test
+           float scale = 1.0f;
+           if(enable_shadows) {
+              // interpolated hitpoint
+              float hitpoint[3] = {
+               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
+               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
+               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
+              };
+              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
+             }
+           if(scale)
+             {
+              // wr is normalized reflection vector
+              vector3D<float> wr;
+              wr[0] = -wi[0] + dot2*N[0];
+              wr[1] = -wi[1] + dot2*N[1];
+              wr[2] = -wi[2] + dot2*N[2];
+              vector3D_normalize(&wr[0]);
+           
+              // compute specular component
+              vector3D<float> specular;
+              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
+              float factor = Saturate(std::pow(reflection_angle, specular_power));
+
+              // specular map
+              auto SM_sample = SampleTexture(mesh, SM_index, uv);
+              specular.r = factor*SM_sample.r;
+              specular.g = factor*SM_sample.g;
+              specular.b = factor*SM_sample.b;
+           
+              // color components
+              float ccd[3] = { // diffuse
+               dlight.color[0]*dot1*dlight.intensity,
+               dlight.color[1]*dot1*dlight.intensity,
+               dlight.color[2]*dot1*dlight.intensity
+              };
+              float ccs[3] = { // specular
+               dlight.color[0]*dot1*specular_intensity,
+               dlight.color[1]*dot1*specular_intensity,
+               dlight.color[2]*dot1*specular_intensity
+              };
+           
+              // sum components (page 282, equations 15.7 and 15.8 in book)
+              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular[0]*ccs[0]);
+              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular[1]*ccs[1]);
+              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular[2]*ccs[2]);
+             }
+          }
+       }
+
+    // ambient + all light contributions
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+   }
+
+ // finished
+ return DM_sample;
 }
 
 vector4D<float> RG42(const XNAShaderData* input)
 {
- return RG00(input);
+ // same as RG43 but without alpha
+ vector4D<float> rv = RG43(input);
+ rv.a = 1.0f;
+ return rv;
 }
 
 vector4D<float> RG43(const XNAShaderData* input)
 {
- return RG00(input);
+ // texture indices
+ constexpr int DM_index = 0;
+ constexpr int BM_index = 1;
+ constexpr int SM_index = 2;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated normal
+ float N[3];
+ float N_norm = InterpolateNormal(input, N);
+
+ // interpolated UV coordinates
+ float uv[2][2];
+ InterpolateUV(input, uv);
+
+ // interpolated color
+ float color[4];
+ InterpolateColor4D(input, color);
+
+ //
+ // DIFFUSE MAPPING
+ //
+
+ // diffuse sample
+ vector4D<float> DM_sample;
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
+ else {
+    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
+    DM_sample.a = 1.0f;
+   }
+
+ // multiply by color data
+ DM_sample[0] *= color[0];
+ DM_sample[1] *= color[1];
+ DM_sample[2] *= color[2];
+ DM_sample[3] *= color[3];
+
+ //
+ // NORMAL MAPPING
+ //
+
+ if(enable_BM)
+   {
+    // face UVs and edges
+    uint32_t channel = mesh.textures[BM_index].channel;
+    vector2D<float> uv0(v0->uv[channel]);
+    vector2D<float> uv1(v1->uv[channel]);
+    vector2D<float> uv2(v2->uv[channel]);
+    vector2D<float> tea = uv1 - uv0;
+    vector2D<float> teb = uv2 - uv0;
+
+    // you can't bump map degenerate UVs
+    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
+    if(!(std::abs(scale) < 1.0e-6f))
+      {
+       // interpolated tangent
+       float T[4];
+       float T_norm = InterpolateTangent(input, channel, N, T);
+
+       // N = T cross B (Z = X x Y)
+       // T = B cross N (X = Y x Z)
+       // B = N cross T (Y = Z x X)
+       float B[3];
+       vector3D_vector_product(B, N, T);
+       B[0] *= T[3]; // for mirrored UVs
+       B[1] *= T[3]; // for mirrored UVs
+       B[2] *= T[3]; // for mirrored UVs
+       vector3D_normalize(B);
+
+       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
+       auto NM_sample = SampleTexture(mesh, BM_index, uv);
+       float N_unperturbed[3] = {
+        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
+        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
+       };
+       vector3D_normalize(N_unperturbed);
+
+       // rotate normal
+       // T[0] B[0] N[0] * N[0]
+       // T[1] B[1] B[1] * N[1]
+       // T[2] B[2] N[2] * N[2]
+       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
+       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
+       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
+       vector3D_normalize(N);
+      }
+   }
+
+ //
+ // LIGHTING
+ //
+
+ if(enable_shading)
+   {
+    // wo is "from hit-point to camera"
+    vector3D<float> wo;
+    wo[0] = -input->ray->direction[0];
+    wo[1] = -input->ray->direction[1];
+    wo[2] = -input->ray->direction[2];
+
+    vector3D<float> L;
+    L[0] = 0.0f;
+    L[1] = 0.0f;
+    L[2] = 0.0f;
+
+    // factors
+    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f); // energy conserving
+    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
+    float specular_intensity = mesh.params.params[0];
+    if(!enable_SM) specular_intensity = 0.0f;
+
+    // for each light
+    for(uint32_t i = 0; i < 3; i++)
+       {
+        // light disabled
+        auto dlight = lightlist[i];
+        if(!dlight.enabled) continue;
+    
+        // wi is normalized vector "from hit point to light"
+        vector3D<float> wi;
+        wi[0] = -dlight.direction[0];
+        wi[1] = -dlight.direction[1];
+        wi[2] = -dlight.direction[2];
+    
+        // dot products
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        float dot2 = 2.0f*dot1;
+    
+        // if light intensity is not zero
+        if(dot1 > 1.0e-6f)
+          {
+           // shadow test
+           float scale = 1.0f;
+           if(enable_shadows) {
+              // interpolated hitpoint
+              float hitpoint[3] = {
+               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
+               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
+               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
+              };
+              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
+             }
+           if(scale)
+             {
+              // wr is normalized reflection vector
+              vector3D<float> wr;
+              wr[0] = -wi[0] + dot2*N[0];
+              wr[1] = -wi[1] + dot2*N[1];
+              wr[2] = -wi[2] + dot2*N[2];
+              vector3D_normalize(&wr[0]);
+           
+              // compute specular component
+              vector3D<float> specular;
+              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
+              float factor = Saturate(std::pow(reflection_angle, specular_power));
+
+              // specular map
+              auto SM_sample = SampleTexture(mesh, SM_index, uv, mesh.params.params[1]);
+              specular.r = factor*SM_sample.r;
+              specular.g = factor*SM_sample.g;
+              specular.b = factor*SM_sample.b;
+           
+              // color components
+              float ccd[3] = { // diffuse
+               dlight.color[0]*dot1*dlight.intensity,
+               dlight.color[1]*dot1*dlight.intensity,
+               dlight.color[2]*dot1*dlight.intensity
+              };
+              float ccs[3] = { // specular
+               dlight.color[0]*dot1*specular_intensity,
+               dlight.color[1]*dot1*specular_intensity,
+               dlight.color[2]*dot1*specular_intensity
+              };
+           
+              // sum components (page 282, equations 15.7 and 15.8 in book)
+              L[0] += scale*(kd*DM_sample.x*ccd[0] + ks*specular[0]*ccs[0]);
+              L[1] += scale*(kd*DM_sample.y*ccd[1] + ks*specular[1]*ccs[1]);
+              L[2] += scale*(kd*DM_sample.z*ccd[2] + ks*specular[2]*ccs[2]);
+             }
+          }
+       }
+
+    // ambient + all light contributions
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+   }
+
+ // finished
+ return DM_sample;
 }
 
 vector4D<float> RG_thorgear(const XNAShaderData* input)
@@ -3530,7 +4256,71 @@ vector4D<float> RG_thorgear(const XNAShaderData* input)
 
 vector4D<float> RG_thorglow(const XNAShaderData* input)
 {
- return RG00(input);
+ // NOTE: It's a little more complicated than this... looks like multiple passes.
+ // graphicsDevice.RenderState.SourceBlend = Blend.BlendFactor;
+ // graphicsDevice.RenderState.BlendFactor = new Color(2.0f, 2.0f, 2.0f, 1.0f);
+ // graphicsDevice.RenderState.DestinationBlend = Blend.InverseSourceAlpha;
+ // effectsArmature.CurrentTechnique = effectsArmature.Techniques["ThorGlow1"];
+ // foreach (Mesh mesh in model.GetMeshGroup(MeshGroupNames.ThorGlowAll)) {
+ //     effectsArmature.Parameters["BoneMatrices"].SetValue(armature.GetBoneMatrices(mesh));
+ //     mesh.RenderSinglePass(effectsArmature, "DiffuseTexture");
+ // }
+ // graphicsDevice.RenderState.SourceBlend = Blend.SourceAlpha;
+ // graphicsDevice.RenderState.DestinationBlend = Blend.One;
+ // effectsArmature.CurrentTechnique = effectsArmature.Techniques["ThorGlow2"];
+ // foreach (Mesh mesh in model.GetMeshGroup(MeshGroupNames.ThorGlowAll)) {
+ //     effectsArmature.Parameters["BoneMatrices"].SetValue(armature.GetBoneMatrices(mesh));
+ //     mesh.RenderSinglePass(effectsArmature, "DiffuseTexture");
+ // }
+ // graphicsDevice.RenderState.SourceBlend = Blend.SourceColor;
+ // graphicsDevice.RenderState.DestinationBlend = Blend.One;
+ // RenderGauntletGlowBillboards(item, isThorGlowGauntletLeftVisible, isThorGlowGauntletRightVisible, false);
+
+ // NOTE: Notice that first function gets full color and multiplies it by a strong blue color.
+ // Then notice the second function sets the blue color but keeps the alpha channel.
+ // float4 ThorGlow1PS(BasicVertexShaderOutput input) : COLOR0
+ // {
+ // 	return GetDiffuseColor(input.TexCoord) * float4(0.25, 0.5, 1.0, 1.0);
+ // }
+ // float4 ThorGlow2PS(BasicVertexShaderOutput input) : COLOR0
+ // {
+ // 	float4 color = GetDiffuseColor(input.TexCoord);
+ // 	color.r = 0.25;
+ // 	color.g = 0.5;
+ // 	color.b = 1.0;
+ // 	return color;
+ // }
+
+ // texture indices
+ constexpr int DM_index = 0;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated UV coordinates
+ float uv[2][2];
+ InterpolateUV(input, uv);
+
+ //
+ // DIFFUSE MAPPING
+ //
+
+ // diffuse sample
+ vector4D<float> DM_sample;
+ if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
+ else {
+    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
+    DM_sample.a = 1.0f;
+   }
+
+ // emissive blue color
+ DM_sample.r = Saturate(DM_sample.r*0.25f);
+ DM_sample.g = Saturate(DM_sample.g*0.50f);
+ DM_sample.b = Saturate(DM_sample.b*0.75f);
+ return DM_sample;
 }
 
 vector4D<float> RG_handguns(const XNAShaderData* input)

@@ -18,6 +18,14 @@ STDSTRINGW Unicode08ToUnicode16(LPCSTR str);
 //
 
 #ifdef UNICODE
+#define GetModulePathname GetModulePathnameW
+#else
+#define GetModulePathname GetModulePathnameA
+#endif
+STDSTRINGA GetModulePathnameA(void);
+STDSTRINGW GetModulePathnameW(void);
+
+#ifdef UNICODE
 #define GetShortFilename GetShortFilenameW
 #else
 #define GetShortFilename GetShortFilenameA

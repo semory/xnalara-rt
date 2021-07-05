@@ -58,6 +58,52 @@ STDSTRINGW Unicode08ToUnicode16(LPCSTR str)
 
 #pragma region Filename Functions
 
+STDSTRINGA GetModulePathnameA(void)
+{
+ // get filename
+ CHAR filename[MAX_PATH];
+ GetModuleFileNameA(NULL, &filename[0], MAX_PATH);
+
+ // extract components
+ CHAR c_param1[MAX_PATH];
+ CHAR c_param2[MAX_PATH];
+ CHAR c_param3[MAX_PATH];
+ CHAR c_param4[MAX_PATH];
+ c_param1[0] = static_cast<CHAR>(0);
+ c_param2[0] = static_cast<CHAR>(0);
+ c_param3[0] = static_cast<CHAR>(0);
+ c_param4[0] = static_cast<CHAR>(0);
+ _splitpath_s(filename, c_param1, MAX_PATH, c_param2, MAX_PATH, c_param3, MAX_PATH, c_param4, MAX_PATH);
+
+ // return result
+ STDSTRINGA retval(c_param1);
+ retval += c_param2;
+ return retval;
+}
+
+STDSTRINGW GetModulePathnameW(void)
+{
+ // get filename
+ WCHAR filename[MAX_PATH];
+ GetModuleFileNameW(NULL, &filename[0], MAX_PATH);
+
+ // extract components
+ WCHAR c_param1[MAX_PATH];
+ WCHAR c_param2[MAX_PATH];
+ WCHAR c_param3[MAX_PATH];
+ WCHAR c_param4[MAX_PATH];
+ c_param1[0] = static_cast<WCHAR>(0);
+ c_param2[0] = static_cast<WCHAR>(0);
+ c_param3[0] = static_cast<WCHAR>(0);
+ c_param4[0] = static_cast<WCHAR>(0);
+ _wsplitpath_s(filename, c_param1, MAX_PATH, c_param2, MAX_PATH, c_param3, MAX_PATH, c_param4, MAX_PATH);
+
+ // return result
+ STDSTRINGW retval(c_param1);
+ retval += c_param2;
+ return retval;
+}
+
 STDSTRINGA GetShortFilenameA(LPCSTR filename)
 {
  // validate filename

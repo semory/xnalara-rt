@@ -17,6 +17,7 @@ bool GetTraceTiming(void);
 
 // camera functions
 void InitCamera(void);
+void SetCameraPosition(float x, float y, float z);
 
 // lighting functions
 void ComputeLightDirection(float* D, float horz, float vert);

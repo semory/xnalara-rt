@@ -12,14 +12,20 @@ int main()
 
  // initialize default camera and lights
  InitCamera();
+ SetCameraPosition(0.0f, 1.5f, 6.0f);
  InitLights();
 
  // set render target dimensions
  SetClearColor(vector4D<float>(0.0f, 0.0f, 0.0f, 0.0f));
- SetTargetDims(1920, 1080);
  SetJitterDims(4);
 
  // render
- Trace(L"test.bmp");
+ cout << " 240 x  135" << endl; SetTargetDims( 240,  135); Trace(L"test-240x135.bmp");
+ cout << " 480 x  270" << endl; SetTargetDims( 480,  270); Trace(L"test-480x270.bmp");
+ cout << " 720 x  405" << endl; SetTargetDims( 720,  405); Trace(L"test-720x405.bmp");
+ cout << "1080 x  607" << endl; SetTargetDims(1080,  607); Trace(L"test-1080x607.bmp");
+ cout << "1920 x 1080" << endl; SetTargetDims(1920, 1080); Trace(L"test-1920x1080.bmp");
+ cout << "7680 x 4320" << endl; SetTargetDims(7680, 4320); Trace(L"test-7680x4320.bmp");
+
  return 0;
 }

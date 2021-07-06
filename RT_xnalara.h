@@ -105,5 +105,7 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model);
 bool LoadXPSMeshBin(const wchar_t* filename, XNAModel* model);
 bool FreeXNAMesh(XNAModel* model);
 
+bool ConvertToOBJ(const XNAModel* model, const wchar_t* filename);
+
 #endif
 

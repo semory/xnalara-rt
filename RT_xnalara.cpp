@@ -858,3 +858,53 @@ bool FreeXNAMesh(XNAModel* model)
 
  return true;
 }
+
+bool ConvertToOBJ(const XNAModel* model, const wchar_t* filename)
+{
+ // create file
+ using namespace std;
+ ofstream ofile(filename);
+ if(!ofile) return false;
+
+ // generate mtl filename
+ auto mtlfile = GetShortFilenameWithoutExtensionW(filename);
+ mtlfile += L".mtl";
+ ofstream mfile(mtlfile);
+ if(!ofile) return false;
+
+ // write OBJ header
+ ofile << "o " << "model" << endl;
+ ofile << "mtllib " << Unicode16ToUnicode08(mtlfile.c_str()).c_str() << endl;
+ ofile << endl;
+
+ // print vertices
+ for(uint32_t mesh_index = 0; mesh_index < model->n_mesh; mesh_index++) {
+     const XNAMesh& mesh = model->meshlist[mesh_index];
+     for(uint32_t i = 0; i < mesh.n_vert; i++) {
+         const XNAVertex& v = mesh.verts[i];
+         ofile << "v " << v.position[0] << " " << v.position[1] << " " << v.position[2] << endl;
+         ofile << "vn " << v.normal[0] << " " << v.normal[1] << " " << v.normal[2] << endl;
+         ofile << "vt " << v.uv[0][0] << " " << (1.0f - v.uv[0][1]) << endl;
+        }
+    }
+
+ // print faces
+ uint32_t v_offset = 0;
+ for(uint32_t mesh_index = 0; mesh_index < model->n_mesh; mesh_index++) {
+     const XNAMesh& mesh = model->meshlist[mesh_index];
+     ofile << "g " << Unicode16ToUnicode08(mesh.params.fullname.c_str()).c_str() << endl;
+     ofile << "usemtl " << Unicode16ToUnicode08(mesh.params.fullname.c_str()).c_str() << endl;
+     for(uint32_t i = 0; i < mesh.n_face; i++) {
+         uint32_t a = v_offset + mesh.faces[i].refs[0];
+         uint32_t b = v_offset + mesh.faces[i].refs[1];
+         uint32_t c = v_offset + mesh.faces[i].refs[2];
+         ofile << "f ";
+         ofile << (c + 1) << "/" << (c + 1) << " ";
+         ofile << (b + 1) << "/" << (b + 1) << " ";
+         ofile << (a + 1) << "/" << (a + 1) << endl;
+        }
+     v_offset += mesh.n_vert;
+    }
+
+ return true;
+}

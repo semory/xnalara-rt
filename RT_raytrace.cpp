@@ -50,14 +50,19 @@ static std::vector<vector2D<float>> sampling_matrix;
 static vector4D<float> clearcolor;
 static bool enable_DM = true;
 static bool enable_BM = true;
+static bool enable_LM = true;
 static bool enable_SM = true;
 static bool enable_EM = true;
 static bool enable_GM = true;
 
 // depth testing variables
+struct DepthPixel {
+ vector4D<float> color;
+ float t;
+ uint32_t mesh_index;
+};
 static const uint32_t MAXPIXELDEPTH = 128;
-static vector4D<float> depth_colors[MAXPIXELDEPTH];
-static float depth_data[MAXPIXELDEPTH];
+static DepthPixel depth_data[MAXPIXELDEPTH];
 static uint32_t depth_elem = 0;
 static float depth_tmin = 0.0f;
 static float depth_tmax = 0.0f;
@@ -230,6 +235,19 @@ bool GetShadingState(void)
  return enable_shading;
 }
 
+bool SetShadowsState(bool state)
+{
+ bool previous = enable_shadows;
+ enable_shadows = state;
+ return previous;
+}
+
+bool GetShadowsState(void)
+{
+ return enable_shadows;
+}
+
+
 #pragma endregion SHADING
 
 #pragma region MODEL_FUNCTIONS
@@ -239,6 +257,11 @@ bool LoadModel(const wchar_t* filename)
  if(!LoadXPSMeshBin(filename, &model)) return error("Failed to load mesh binary.", __FILE__, __LINE__);
  bvh.construct(&model);
  return true;
+}
+
+const XNAModel* GetModel(void)
+{
+ return &model;
 }
 
 #pragma endregion MODEL_FUNCTIONS
@@ -347,7 +370,7 @@ bool Trace(const wchar_t* filename)
           screen_pnt[1] - E[1],
           screen_pnt[2] - E[2]
          };
-         float tn = vector3D_normalize(&screen_dir[0]);
+         float tn = vector3D_normalize(screen_dir);
          float tf = tn*pratio;
 
          // initialize depth test
@@ -399,7 +422,7 @@ bool Trace(const wchar_t* filename)
                       const XNAVertex& v2 = bvh.model->meshlist[face.mesh_index].verts[face.refs[2]];
                       ray3D_triangle3D_intersect(result, ray, v0.position, v1.position, v2.position, false);
                       if(!result.intersect) continue;
-         
+
                       // shade face
                       XNAShaderData sd;
                       sd.model = bvh.model;
@@ -413,15 +436,15 @@ bool Trace(const wchar_t* filename)
                       sd.v = result.v;
                       sd.w = 1.0f - result.u - result.v;
                       auto color = (*shader)(&sd);
-                      UpdateDepthTest(color, result.t, bvh.model->meshlist[face.mesh_index].params.alpha);
+                      UpdateDepthTest(color, result.t, face.mesh_index, bvh.model->meshlist[face.mesh_index].params.alpha);
                      }
                  }
                // put children on stack
                else {
                   uint32_t child1 = node.node_index;
                   uint32_t child2 = node.node_index + 1;
-                  if(ray3D_AABB(ray, node.bbmin, node.bbmax, 0.0f, 1000.0f)) trace_node_stack[trace_node_elem++] = child1;
-                  if(ray3D_AABB(ray, node.bbmin, node.bbmax, 0.0f, 1000.0f)) trace_node_stack[trace_node_elem++] = child2;
+                  if(ray3D_AABB(ray, node.bbmin, node.bbmax, 0.0f, (tf - tn))) trace_node_stack[trace_node_elem++] = child1;
+                  if(ray3D_AABB(ray, node.bbmin, node.bbmax, 0.0f, (tf - tn))) trace_node_stack[trace_node_elem++] = child2;
                  }
               }
 
@@ -471,18 +494,6 @@ void RefreshJitterMatrix(void)
  std::mt19937 gen(rd());
  std::uniform_real_distribution<float> urd(0.0f, 1.0f);
 
- // 2x2 example
- // r0, c0 -> <0*2+0, 0*2+0>*(1/4) = <0.00, 0.00> + random number between 0.00 and 0.25
- // r0, c1 -> <0*2+1, 1*2+0>*(1/4) = <0.25, 0.50> + random number between 0.00 and 0.25
- // r1, c0 -> <1*2+0, 0*2+1>*(1/4) = <0.50, 0.25> + random number between 0.00 and 0.25
- // r1, c1 -> <1*2+1, 1*2+1>*(1/4) = <0.75, 0.75> + random number between 0.00 and 0.25
- // this generates the canonical pattern
- // S x x x x
- // x x S x x
- // x S x x x
- // x x x S x
- // x x x x x
-
  // generate canonical pattern
  float subcell_dim = 1.0f/static_cast<float>(n_samples);
  size_t index = 0;
@@ -509,13 +520,12 @@ void RefreshJitterMatrix(void)
 
 void InitDepthTest(float tn, float tf)
 {
- depth_data[0] = 0.0f;
  depth_elem = 0;
  depth_tmin = tn;
  depth_tmax = tf;
 }
 
-void UpdateDepthTest(const vector4D<float>& color, float dt, uint8_t alpha)
+void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha)
 {
  // NOTES:
  // To solve the overlapping mesh problem, I currently shift or break during
@@ -531,16 +541,19 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint8_t alpha)
 
  // CASE #2: FIRST PIXEL
  if(!depth_elem) {
-    depth_colors[depth_elem] = color;
-    depth_data[depth_elem] = dt;
+    depth_data[depth_elem].color = color;
+    depth_data[depth_elem].t = dt;
+    depth_data[depth_elem].mesh_index = mesh_index;
     depth_elem = 1;
     return;
    }
 
+ constexpr float epsilon = 1.0e-6f;
+
  // CASE #3: ANYTHING CONSIDERABLY BEHIND LAST OPAQUE PIXEL IS HIDDEN
- size_t j = depth_elem - 1;
- size_t k = depth_elem;
- if(depth_colors[j].a == 1.0f && ((dt - depth_data[j]) > 1.0e-6f))
+ uint32_t j = depth_elem - 1;
+ uint32_t k = depth_elem;
+ if(depth_data[j].color.a == 1.0f && ((dt - depth_data[j].t) > epsilon))
     return;
 
  // CASE #4: HAVEN'T REACHED LIMIT
@@ -549,19 +562,18 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint8_t alpha)
     // stop shifting when new t-value is greater than depth_data[j]
     for(size_t i = 0; i < depth_elem; i++) {
         // break when certainly true
-        // dt is considerably larger: (30 - 20) > 1.0e-6f = true
-        if((dt - depth_data[j]) > 1.0e-6f) break;
+        // dt is considerably larger: (30 - 20) > epsilon = true
+        if((dt - depth_data[j].t) > epsilon) break;
         // shift when certainly true
-        // dt is considerably smaller: (30 - 20) > 1.0e-6f = true
-        if((depth_data[j] - dt) > 1.0e-6f) {
-           depth_colors[k] = depth_colors[j];
+        // dt is considerably smaller: (30 - 20) > epsilon = true
+        if((depth_data[j].t - dt) > epsilon) {
            depth_data[k] = depth_data[j];
            j--;
            k--;
           }
         // dt is really close, must resolve overlapping meshes, let alpha meshes go first
-        else if(alpha) {
-           depth_colors[k] = depth_colors[j];
+        // else if(alpha) {
+        else if(depth_data[j].mesh_index < mesh_index) {
            depth_data[k] = depth_data[j];
            j--;
            k--;
@@ -569,8 +581,9 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint8_t alpha)
         else break;
        }
     // insert new data
-    depth_colors[k] = color;
-    depth_data[k] = dt;
+    depth_data[k].color = color;
+    depth_data[k].t = dt;
+    depth_data[k].mesh_index = mesh_index;
     // set number of colors
     if(color.a == 1.0f) depth_elem = k + 1;
     else depth_elem++;
@@ -579,7 +592,7 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint8_t alpha)
  else
    {
     // keep going if less
-    if((dt < depth_data[j]) || (dt == depth_data[j] && color.a < 1.0f)) {
+    if((dt < depth_data[j].t) || (dt == depth_data[j].t && color.a < 1.0f)) {
        j--;
        k--;
       }
@@ -589,27 +602,26 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint8_t alpha)
     // stop shifting when new t-value is greater than depth_data[j]
     for(size_t i = 1; i < depth_elem; i++) {
         // break when certainly true
-        // dt is considerably larger: (30 - 20) > 1.0e-6f = true
-        if((dt - depth_data[j]) > 1.0e-6f) break;
+        // dt is considerably larger: (30 - 20) > epsilon = true
+        if((dt - depth_data[j].t) > epsilon) break;
         // shift when certainly true
-        // dt is considerably smaller: (30 - 20) > 1.0e-6f = true
-        if((depth_data[j] - dt) > 1.0e-6f) {
-           depth_colors[k] = depth_colors[j];
+        // dt is considerably smaller: (30 - 20) > epsilon = true
+        if((depth_data[j].t - dt) > epsilon) {
            depth_data[k] = depth_data[j];
            j--;
            k--;
           }
         // dt is really close, must resolve overlapping meshes, let alpha meshes go first
         else if(alpha) {
-           depth_colors[k] = depth_colors[j];
            depth_data[k] = depth_data[j];
            j--;
            k--;
           }
         else break;
        }
-    depth_colors[k] = color;
-    depth_data[k] = dt;
+    depth_data[k].color = color;
+    depth_data[k].t = dt;
+    depth_data[k].mesh_index = mesh_index;
     if(color.a == 1.0f) depth_elem = k + 1;
    }
 }
@@ -620,9 +632,9 @@ vector4D<float> BlendPixels(void)
  if(depth_elem == 0) return clearcolor;
 
  // blend sorted pixels (front-to-back)
- vector4D<float> front = depth_colors[0];
+ vector4D<float> front = depth_data[0].color;
  for(uint32_t i = 1; i < depth_elem; i++) {
-     const vector4D<float>& back = depth_colors[i];
+     const vector4D<float>& back = depth_data[i].color;
      float af = front.a;
      float one_minus_af = 1.0f - front.a;
      front.r = front.r*af + one_minus_af*back.a*back.r;
@@ -672,7 +684,7 @@ inline vector4D<float> SampleDiffuse(const XNAMesh& mesh, uint32_t index, const 
 template<uint32_t rows, uint32_t cols>
 inline vector4D<float> SampleDiffuse(const XNAMesh& mesh, uint32_t index, const float (&color)[4], const float (&uv)[rows][cols])
 {
- vector4D<float> sample; 
+ vector4D<float> sample;
  if(enable_DM) sample = SampleTexture(mesh, index, uv);
  else {
     sample.r = sample.g = sample.b = 0.75f;
@@ -785,7 +797,7 @@ float ShadowTest(const RTDynamicBVH& bvh, const float* hp, const float* ld)
 
 #pragma region RENDERGROUP_SHADERS
 
-float InterpolateNormal(const XNAShaderData* input, float* N)
+inline float InterpolateNormal(const XNAShaderData* input, float* N)
 {
  float u = input->u;
  float v = input->v;
@@ -796,7 +808,7 @@ float InterpolateNormal(const XNAShaderData* input, float* N)
  return vector3D_normalize(N);
 }
 
-float InterpolateTangent(const XNAShaderData* input, uint32_t channel, float* N, float* T)
+inline float InterpolateTangent(const XNAShaderData* input, uint32_t channel, float* N, float* T)
 {
  float u = input->u;
  float v = input->v;
@@ -810,7 +822,7 @@ float InterpolateTangent(const XNAShaderData* input, uint32_t channel, float* N,
 }
 
 // Interpolate UVs from a specific channel
-void InterpolateUV(const XNAShaderData* input, uint32_t channel, float* uv)
+inline void InterpolateUV(const XNAShaderData* input, uint32_t channel, float* uv)
 {
  float ipt;
  float u = input->u;
@@ -822,7 +834,7 @@ void InterpolateUV(const XNAShaderData* input, uint32_t channel, float* uv)
 
 // Interpolate UVs on all channels
 template<uint32_t rows, uint32_t cols>
-void InterpolateUV(const XNAShaderData* input, float (&uv)[rows][cols])
+inline void InterpolateUV(const XNAShaderData* input, float (&uv)[rows][cols])
 {
  float ipt;
  float u = input->u;
@@ -834,19 +846,129 @@ void InterpolateUV(const XNAShaderData* input, float (&uv)[rows][cols])
     }
 }
 
-void InterpolateColor3D(const XNAShaderData* input, float* color)
-{
- color[0] = input->u*input->v0->color[0] + input->v*input->v1->color[0] + input->w*input->v2->color[0];
- color[1] = input->u*input->v0->color[1] + input->v*input->v1->color[1] + input->w*input->v2->color[1];
- color[2] = input->u*input->v0->color[2] + input->v*input->v1->color[2] + input->w*input->v2->color[2];
-}
-
-void InterpolateColor4D(const XNAShaderData* input, float* color)
+inline void InterpolateColor4D(const XNAShaderData* input, float* color)
 {
  color[0] = input->u*input->v0->color[0] + input->v*input->v1->color[0] + input->w*input->v2->color[0];
  color[1] = input->u*input->v0->color[1] + input->v*input->v1->color[1] + input->w*input->v2->color[1];
  color[2] = input->u*input->v0->color[2] + input->v*input->v1->color[2] + input->w*input->v2->color[2];
  color[3] = input->u*input->v0->color[3] + input->v*input->v1->color[3] + input->w*input->v2->color[3];
+}
+
+template<uint32_t rows, uint32_t cols>
+void NormalMapping1(const XNAShaderData* input, uint32_t BM_index, const float (&uv)[rows][cols], float (&N)[3])
+{
+ // normal mapping disabled
+ if(!enable_BM) return;
+
+ // face UVs and edges
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ uint32_t channel = input->model->meshlist[input->face->mesh_index].textures[BM_index].channel;
+ vector2D<float> uv0(input->v0->uv[channel]);
+ vector2D<float> uv1(input->v1->uv[channel]);
+ vector2D<float> uv2(input->v2->uv[channel]);
+ vector2D<float> tea = uv1 - uv0;
+ vector2D<float> teb = uv2 - uv0;
+
+ // you can't bump map degenerate UVs
+ float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
+ if(std::abs(scale) < 1.0e-6f) return;
+
+ // interpolated tangent
+ float T[4];
+ float T_norm = InterpolateTangent(input, channel, N, T);
+
+ // N = T cross B (Z = X x Y)
+ // T = B cross N (X = Y x Z)
+ // B = N cross T (Y = Z x X)
+ float B[3];
+ vector3D_vector_product(B, N, T);
+ B[0] *= T[3]; // for mirrored UVs
+ B[1] *= T[3]; // for mirrored UVs
+ B[2] *= T[3]; // for mirrored UVs
+ vector3D_normalize(B);
+
+ // remap sample to <[-1, +1],[-1, +1],[0, +1]>
+ auto NM_sample = SampleTexture(mesh, BM_index, uv);
+ float N_unperturbed[3] = {
+  NM_sample[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
+  NM_sample[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
+  NM_sample[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
+ };
+ vector3D_normalize(N_unperturbed);
+
+ // rotate normal
+ // T[0] B[0] N[0] * N[0]
+ // T[1] B[1] B[1] * N[1]
+ // T[2] B[2] N[2] * N[2e]
+ N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
+ N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
+ N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
+ vector3D_normalize(N);
+}
+
+template<uint32_t rows, uint32_t cols>
+void NormalMapping3(const XNAShaderData* input, uint32_t BM_index, uint32_t MM_index, uint32_t R1_index, float s1, uint32_t R2_index, float s2, const float (&uv)[rows][cols], float (&N)[3])
+{
+ // normal mapping disabled
+ if(!enable_BM) return;
+
+ // face UVs and edges
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ uint32_t channel = input->model->meshlist[input->face->mesh_index].textures[BM_index].channel;
+ vector2D<float> uv0(input->v0->uv[channel]);
+ vector2D<float> uv1(input->v1->uv[channel]);
+ vector2D<float> uv2(input->v2->uv[channel]);
+ vector2D<float> tea = uv1 - uv0;
+ vector2D<float> teb = uv2 - uv0;
+
+ // you can't bump map degenerate UVs
+ float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
+ if(std::abs(scale) < 1.0e-6f) return;
+
+ // interpolated tangent
+ float T[4];
+ float T_norm = InterpolateTangent(input, channel, N, T);
+
+ // N = T cross B (Z = X x Y)
+ // T = B cross N (X = Y x Z)
+ // B = N cross T (Y = Z x X)
+ float B[3];
+ vector3D_vector_product(B, N, T);
+ B[0] *= T[3]; // for mirrored UVs
+ B[1] *= T[3]; // for mirrored UVs
+ B[2] *= T[3]; // for mirrored UVs
+ vector3D_normalize(B);
+
+ // sample textures
+ auto NM_sample = SampleTexture(mesh, BM_index, uv);
+ auto MM_sample = SampleTexture(mesh, MM_index, uv);
+ auto R1_sample = SampleTexture(mesh, R1_index, uv, s1);
+ auto R2_sample = SampleTexture(mesh, R2_index, uv, s2);
+
+ // combine bumpmap colors
+ // note that NM, R1, and R2 can use different UV layers, but the tangent space
+ // normal mapping uses the UV layer specified by the NM texture.
+ float final_bump[3];
+ final_bump[0] = NM_sample.r + (R1_sample.r - 0.5f)*MM_sample.r + (R2_sample.r - 0.5f)*MM_sample.g;
+ final_bump[1] = NM_sample.g + (R1_sample.g - 0.5f)*MM_sample.r + (R2_sample.g - 0.5f)*MM_sample.g;
+ final_bump[2] = NM_sample.b + (R1_sample.b - 0.5f)*MM_sample.r + (R2_sample.b - 0.5f)*MM_sample.g;
+
+ // remap sample to <[-1, +1],[-1, +1],[0, +1]>
+ float N_unperturbed[3] = {
+  final_bump[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
+  final_bump[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
+  final_bump[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
+ };
+ vector3D_normalize(N_unperturbed);
+
+ // rotate normal
+ // T[0] B[0] N[0] * N[0]
+ // T[1] B[1] B[1] * N[1]
+ // T[2] B[2] N[2] * N[2]
+ N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
+ N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
+ N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
+ vector3D_normalize(N);
 }
 
 vector4D<float> RG00(const XNAShaderData* input)
@@ -939,70 +1061,13 @@ vector4D<float> RG06(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2e]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -1132,18 +1197,7 @@ vector4D<float> RG07(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // LIGHTING
@@ -1258,70 +1312,13 @@ vector4D<float> RG08(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -1414,10 +1411,15 @@ vector4D<float> RG08(const XNAShaderData* input)
        }
 
     // ambient + all light contributions
-    auto LM_sample = SampleTexture(mesh, LM_index, uv);
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0])*LM_sample.r;
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1])*LM_sample.g;
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2])*LM_sample.b;
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+    if(enable_LM) {
+       auto LM_sample = SampleTexture(mesh, LM_index, uv);
+       DM_sample.r *= LM_sample.r;
+       DM_sample.g *= LM_sample.g;
+       DM_sample.b *= LM_sample.b;
+      }
    }
 
  // finished
@@ -1453,18 +1455,7 @@ vector4D<float> RG09(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // LIGHTING
@@ -1542,10 +1533,15 @@ vector4D<float> RG09(const XNAShaderData* input)
        }
 
     // ambient + all light contributions
-    auto LM_sample = SampleTexture(mesh, LM_index, uv);
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0])*LM_sample.r;
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1])*LM_sample.g;
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2])*LM_sample.b;
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+    if(enable_LM) {
+       auto LM_sample = SampleTexture(mesh, LM_index, uv);
+       DM_sample.r *= LM_sample.r;
+       DM_sample.g *= LM_sample.g;
+       DM_sample.b *= LM_sample.b;
+      }
    }
 
  // finished
@@ -1615,18 +1611,7 @@ vector4D<float> RG15(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  return DM_sample;
 }
@@ -1675,12 +1660,7 @@ vector4D<float> RG18(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, uv);
 
  //
  // LIGHTING
@@ -1777,19 +1757,16 @@ vector4D<float> RG19(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, uv);
 
  // multiply by lightmap data
- auto LM_sample = SampleTexture(mesh, LM_index, uv);
- DM_sample[0] *= LM_sample.r;
- DM_sample[1] *= LM_sample.g;
- DM_sample[2] *= LM_sample.b;
- DM_sample[3] *= LM_sample.a;
+ if(enable_LM) {
+    auto LM_sample = SampleTexture(mesh, LM_index, uv);
+    DM_sample[0] *= LM_sample.r;
+    DM_sample[1] *= LM_sample.g;
+    DM_sample[2] *= LM_sample.b;
+    DM_sample[3] *= LM_sample.a;
+   }
 
  //
  // LIGHTING
@@ -1890,83 +1867,13 @@ vector4D<float> RG20(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample textures
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       auto MM_sample = SampleTexture(mesh, MM_index, uv);
-       auto R1_sample = SampleTexture(mesh, R1_index, uv, mesh.params.params[1]);
-       auto R2_sample = SampleTexture(mesh, R2_index, uv, mesh.params.params[2]);
-
-       // combine bumpmap colors
-       // note that NM, R1, and R2 can use different UV layers, but the tangent space
-       // normal mapping uses the UV layer specified by the NM texture.
-       float final_bump[3];
-       final_bump[0] = NM_sample.r + (R1_sample.r - 0.5f)*MM_sample.r + (R2_sample.r - 0.5f)*MM_sample.g;
-       final_bump[1] = NM_sample.g + (R1_sample.g - 0.5f)*MM_sample.r + (R2_sample.g - 0.5f)*MM_sample.g;
-       final_bump[2] = NM_sample.b + (R1_sample.b - 0.5f)*MM_sample.r + (R2_sample.b - 0.5f)*MM_sample.g;
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       float N_unperturbed[3] = {
-        final_bump[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping3(input, BM_index, MM_index, R1_index, mesh.params.params[1], R2_index, mesh.params.params[2], uv, N);
 
  //
  // LIGHTING
@@ -2059,10 +1966,15 @@ vector4D<float> RG20(const XNAShaderData* input)
        }
 
     // ambient + all light contributions
-    auto LM_sample = SampleTexture(mesh, LM_index, uv);
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0])*LM_sample.r;
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1])*LM_sample.g;
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2])*LM_sample.b;
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+    if(enable_LM) {
+       auto LM_sample = SampleTexture(mesh, LM_index, uv);
+       DM_sample.r *= LM_sample.r;
+       DM_sample.g *= LM_sample.g;
+       DM_sample.b *= LM_sample.b;
+      }
    }
 
  // finished
@@ -2071,6 +1983,7 @@ vector4D<float> RG20(const XNAShaderData* input)
 
 vector4D<float> RG21(const XNAShaderData* input)
 {
+ // SHADLESS RENDER GROUPS
  // texture indices
  constexpr int DM_index = 0;
 
@@ -2089,15 +2002,7 @@ vector4D<float> RG21(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // finished
- return DM_sample;
+ return SampleDiffuse(mesh, DM_index, uv);
 }
 
 vector4D<float> RG22(const XNAShaderData* input)
@@ -2142,83 +2047,13 @@ vector4D<float> RG23(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample textures
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       auto MM_sample = SampleTexture(mesh, MM_index, uv);
-       auto R1_sample = SampleTexture(mesh, R1_index, uv, mesh.params.params[1]);
-       auto R2_sample = SampleTexture(mesh, R2_index, uv, mesh.params.params[2]);
-
-       // combine bumpmap colors
-       // note that NM, R1, and R2 can use different UV layers, but the tangent space
-       // normal mapping uses the UV layer specified by the NM texture.
-       float final_bump[3];
-       final_bump[0] = NM_sample.r + (R1_sample.r - 0.5f)*MM_sample.r + (R2_sample.r - 0.5f)*MM_sample.g;
-       final_bump[1] = NM_sample.g + (R1_sample.g - 0.5f)*MM_sample.r + (R2_sample.g - 0.5f)*MM_sample.g;
-       final_bump[2] = NM_sample.b + (R1_sample.b - 0.5f)*MM_sample.r + (R2_sample.b - 0.5f)*MM_sample.g;
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       float N_unperturbed[3] = {
-        final_bump[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping3(input, BM_index, MM_index, R1_index, mesh.params.params[1], R2_index, mesh.params.params[2], uv, N);
 
  //
  // LIGHTING
@@ -2312,10 +2147,15 @@ vector4D<float> RG23(const XNAShaderData* input)
        }
 
     // ambient + all light contributions
-    auto LM_sample = SampleTexture(mesh, LM_index, uv);
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0])*LM_sample.r;
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1])*LM_sample.g;
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2])*LM_sample.b;
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+    if(enable_LM) {
+       auto LM_sample = SampleTexture(mesh, LM_index, uv);
+       DM_sample.r *= LM_sample.r;
+       DM_sample.g *= LM_sample.g;
+       DM_sample.b *= LM_sample.b;
+      }
    }
 
  // finished
@@ -2361,70 +2201,13 @@ vector4D<float> RG25(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -2521,10 +2304,15 @@ vector4D<float> RG25(const XNAShaderData* input)
        }
 
     // ambient + all light contributions
-    auto LM_sample = SampleTexture(mesh, LM_index, uv);
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0])*LM_sample.r;
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1])*LM_sample.g;
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2])*LM_sample.b;
+    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
+    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
+    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+    if(enable_LM) {
+       auto LM_sample = SampleTexture(mesh, LM_index, uv);
+       DM_sample.r *= LM_sample.r;
+       DM_sample.g *= LM_sample.g;
+       DM_sample.b *= LM_sample.b;
+      }
    }
 
  // finished
@@ -2576,70 +2364,13 @@ vector4D<float> RG27(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -2820,83 +2551,13 @@ vector4D<float> RG29(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample textures
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       auto MM_sample = SampleTexture(mesh, MM_index, uv);
-       auto R1_sample = SampleTexture(mesh, R1_index, uv, mesh.params.params[2]);
-       auto R2_sample = SampleTexture(mesh, R2_index, uv, mesh.params.params[2]);
-
-       // combine bumpmap colors
-       // note that NM, R1, and R2 can use different UV layers, but the tangent space
-       // normal mapping uses the UV layer specified by the NM texture.
-       float final_bump[3];
-       final_bump[0] = NM_sample.r + (R1_sample.r - 0.5f)*MM_sample.r + (R2_sample.r - 0.5f)*MM_sample.g;
-       final_bump[1] = NM_sample.g + (R1_sample.g - 0.5f)*MM_sample.r + (R2_sample.g - 0.5f)*MM_sample.g;
-       final_bump[2] = NM_sample.b + (R1_sample.b - 0.5f)*MM_sample.r + (R2_sample.b - 0.5f)*MM_sample.g;
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       float N_unperturbed[3] = {
-        final_bump[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        final_bump[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping3(input, BM_index, MM_index, R1_index, mesh.params.params[2], R2_index, mesh.params.params[2], uv, N);
 
  //
  // LIGHTING
@@ -3059,70 +2720,13 @@ vector4D<float> RG31(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2e]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -3272,18 +2876,7 @@ vector4D<float> RG33(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // LIGHTING
@@ -3435,70 +3028,13 @@ vector4D<float> RG37(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample[0]*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[1]*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample[2]              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2e]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -3651,70 +3187,13 @@ vector4D<float> RG39(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -3872,70 +3351,13 @@ vector4D<float> RG41(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -4079,70 +3501,13 @@ vector4D<float> RG43(const XNAShaderData* input)
  //
 
  // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // multiply by color data
- DM_sample[0] *= color[0];
- DM_sample[1] *= color[1];
- DM_sample[2] *= color[2];
- DM_sample[3] *= color[3];
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, color, uv);
 
  //
  // NORMAL MAPPING
  //
 
- if(enable_BM)
-   {
-    // face UVs and edges
-    uint32_t channel = mesh.textures[BM_index].channel;
-    vector2D<float> uv0(v0->uv[channel]);
-    vector2D<float> uv1(v1->uv[channel]);
-    vector2D<float> uv2(v2->uv[channel]);
-    vector2D<float> tea = uv1 - uv0;
-    vector2D<float> teb = uv2 - uv0;
-
-    // you can't bump map degenerate UVs
-    float scale = (tea[0]*teb[1] - teb[0]*tea[1]);
-    if(!(std::abs(scale) < 1.0e-6f))
-      {
-       // interpolated tangent
-       float T[4];
-       float T_norm = InterpolateTangent(input, channel, N, T);
-
-       // N = T cross B (Z = X x Y)
-       // T = B cross N (X = Y x Z)
-       // B = N cross T (Y = Z x X)
-       float B[3];
-       vector3D_vector_product(B, N, T);
-       B[0] *= T[3]; // for mirrored UVs
-       B[1] *= T[3]; // for mirrored UVs
-       B[2] *= T[3]; // for mirrored UVs
-       vector3D_normalize(B);
-
-       // sample texture and remap sample to <[-1, +1],[-1, +1],[0, +1]>
-       auto NM_sample = SampleTexture(mesh, BM_index, uv);
-       float N_unperturbed[3] = {
-        NM_sample.r*2.0f - 1.0f, // r -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.g*2.0f - 1.0f, // g -> [0.0,1.0] so this maps to [-1.0,+1.0]
-        NM_sample.b              // b -> [0.0,1.0] so unchanged as we cannot have negative normal (means invisible)
-       };
-       vector3D_normalize(N_unperturbed);
-
-       // rotate normal
-       // T[0] B[0] N[0] * N[0]
-       // T[1] B[1] B[1] * N[1]
-       // T[2] B[2] N[2] * N[2]
-       N[0] = N_unperturbed[0]*T[0] + N_unperturbed[1]*B[0] + N_unperturbed[2]*N[0];
-       N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
-       N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
-       vector3D_normalize(N);
-      }
-   }
+ NormalMapping1(input, BM_index, uv, N);
 
  //
  // LIGHTING
@@ -4308,15 +3673,8 @@ vector4D<float> RG_thorglow(const XNAShaderData* input)
  // DIFFUSE MAPPING
  //
 
- // diffuse sample
- vector4D<float> DM_sample;
- if(enable_DM) DM_sample = SampleTexture(mesh, DM_index, uv);
- else {
-    DM_sample.r = DM_sample.g = DM_sample.b = 0.75f;
-    DM_sample.a = 1.0f;
-   }
-
- // emissive blue color
+ // multiply diffuse by emissive blue color
+ vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, uv);
  DM_sample.r = Saturate(DM_sample.r*0.25f);
  DM_sample.g = Saturate(DM_sample.g*0.50f);
  DM_sample.b = Saturate(DM_sample.b*0.75f);

@@ -507,6 +507,12 @@ struct ray3D_triangle3D_intersect_result {
 //
 // RAY TRIANGLE INTERSECTION
 //
+inline void vector3D_sub(float* result, const float* a, const float* b)
+{
+ result[0] = a[0] - b[0];
+ result[1] = a[1] - b[1];
+ result[2] = a[2] - b[2];
+}
 
 inline void ray3D_triangle3D_intersect(ray3D_triangle3D_intersect_result& result, const ray3D& ray, const float* A, const float* B, const float* C, bool cull)
 {
@@ -526,26 +532,8 @@ inline void ray3D_triangle3D_intersect(ray3D_triangle3D_intersect_result& result
  // if this dot product is zero, then the ray and normal vector of the triangle are orthogonal,
  // which means that the ray and triangle edge vectors are parallel
  float determinant = E[0]*F_cross_D[0] + E[1]*F_cross_D[1] + E[2]*F_cross_D[2];
- if(zerotest(determinant))
-   {
-    // compute L = C - O
-    float L[3] = {
-     C[0] - ray.origin[0],
-     C[1] - ray.origin[1],
-     C[2] - ray.origin[2]
-    };
-
-    // compute (L dot (F cross D))
-    // if this triple scalar product is zero, the ray and triangle are in the same plane
-    float L_dot_F_cross_D = (L[0]*F_cross_D[0] + L[1]*F_cross_D[1] + L[2]*F_cross_D[2]);
-    if(zerotest(L_dot_F_cross_D))
-      {
-       // may or may not intersect, but just say no anyways
-       result.intersect = false;
-      }
-    else
-       result.intersect = false;
-
+ if(std::abs(determinant) < 1.0e-7f) {
+    result.intersect = false;
     return;
    }
 
@@ -593,6 +581,96 @@ inline void ray3D_triangle3D_intersect(ray3D_triangle3D_intersect_result& result
     result.v = v;
    }
 }
+
+/*
+inline void ray3D_triangle3D_intersect(ray3D_triangle3D_intersect_result& result, const ray3D& ray, const float* A, const float* B, const float* C, bool cull)
+{
+ // compute E = C - A
+ // compute F = C - B
+ float edge1[3];
+ float edge2[3];
+ vector3D_sub(edge1, B, A);
+ vector3D_sub(edge2, C, A);
+
+ // compute D cross F
+ float pvec[3];
+ vector3D_vector_product(pvec, ray.direction, edge2);
+
+ // compute determinant and test
+ float determinant = vector3D_scalar_product(edge1, pvec);
+ float epsilon = 1.0e-7f;
+ if(determinant > epsilon)
+   {
+       result.intersect = false;
+       return;
+
+    // compute L = O - A
+    float tvec[3];
+    vector3D_sub(tvec, ray.origin, A);
+
+    // compute u = (L dot (D cross F))
+    float u = vector3D_scalar_product(tvec, pvec);
+    if(u < 0.0f || u > determinant) {
+       result.intersect = false;
+       return;
+      }
+
+    // compute E cross L
+    float qvec[3];
+    vector3D_vector_product(qvec, tvec, edge1);
+
+    // compute v = (D dot (L cross E))
+    float v = vector3D_scalar_product(ray.direction, qvec);
+    if((v < 0.0f) || ((u + v) > determinant)) {
+       result.intersect = false;
+       return;
+      }
+
+    // compute t = (F dot (L cross E))/determinant
+    float inverse_determinant = inv(determinant);
+    result.intersect = true;
+    result.t = inverse_determinant*(vector3D_scalar_product(edge2, qvec));
+    result.u = inverse_determinant*u;
+    result.v = inverse_determinant*v;
+    return;
+   }
+ else if(determinant < -epsilon)
+   {
+    // compute L = O - A
+    float tvec[3];
+    vector3D_sub(tvec, ray.origin, A);
+
+    // compute u = (L dot (D cross F))
+    float u = vector3D_scalar_product(tvec, pvec);
+    if(u > 0.0f || u < determinant) {
+       result.intersect = false;
+       return;
+      }
+
+    // compute E cross L
+    float qvec[3];
+    vector3D_vector_product(qvec, tvec, edge1);
+
+    // compute v = (D dot (L cross E))
+    float v = vector3D_scalar_product(ray.direction, qvec);
+    if((v > 0.0f) || ((u + v) < determinant)) {
+       result.intersect = false;
+       return;
+      }
+
+    // compute t = (F dot (L cross E))/determinant
+    float inverse_determinant = inv(determinant);
+    result.intersect = true;
+    result.t = inverse_determinant*(vector3D_scalar_product(edge2, qvec));
+    result.u = inverse_determinant*u;
+    result.v = inverse_determinant*v;
+    return;
+   }
+
+ // ray is parallel
+ result.intersect = false;
+}
+*/
 
 inline bool ray3D_AABB(const ray3D& ray, const MinMaxAABB& aabb, float tmin, float tmax)
 {

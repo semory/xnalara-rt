@@ -27,9 +27,13 @@ void ResetLight(int index);
 // shading functions
 bool SetShadingState(bool state);
 bool GetShadingState(void);
+bool SetShadowsState(bool state);
+bool GetShadowsState(void);
 
 // model functions
+struct XNAModel;
 bool LoadModel(const wchar_t* filename);
+const XNAModel* GetModel(void);
 
 // ray tracing functions
 void SetClearColor(const vector4D<float>& color);
@@ -40,7 +44,7 @@ bool Trace(const wchar_t* filename);
 // private ray tracing functions
 void RefreshJitterMatrix(void);
 void InitDepthTest(float tn, float tf);
-void UpdateDepthTest(const vector4D<float>& color, float dt, uint8_t alpha);
+void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha);
 vector4D<float> BlendPixels(void);
 
 // shader functions

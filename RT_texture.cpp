@@ -108,6 +108,30 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  if(v < 0.0f) v += 1.0f;
 
  // obtain image coordinates from UV
+ unsigned int x = static_cast<unsigned int>((ptr->dx - 1)*u);
+ unsigned int y = static_cast<unsigned int>((ptr->dy - 1)*v);
+ 
+ // index of coordinate
+ unsigned int index = y*ptr->pitch + 4*x;
+ 
+ // sample image
+ vector4D<float> result;
+ result.b = ptr->data[index++]/255.0f;
+ result.g = ptr->data[index++]/255.0f;
+ result.r = ptr->data[index]/255.0f;
+ result.a = 1.0f;
+ return result;
+/*
+ // strip off to clamp (u,v) to [-1, +1]
+ float intpart;
+ u = modff(u, &intpart);
+ v = modff(v, &intpart);
+
+ // u and v should range from [0, 1]
+ if(u < 0.0f) u += 1.0f;
+ if(v < 0.0f) v += 1.0f;
+
+ // obtain image coordinates from UV
  float x = (ptr->dx - 1)*u;
  float y = (ptr->dy - 1)*v;
 
@@ -174,25 +198,35 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  // A channel
  result.a = 1.0f;
  return result;
-
- // // obtain image coordinates from UV
- // unsigned int x = static_cast<unsigned int>((ptr->dx - 1)*u);
- // unsigned int y = static_cast<unsigned int>((ptr->dy - 1)*v);
- // 
- // // index of coordinate
- // unsigned int index = y*ptr->pitch + 4*x;
- // 
- // // sample image
- // vector4D<unsigned char> result;
- // result.b = ptr->data[index++];
- // result.g = ptr->data[index++];
- // result.r = ptr->data[index];
- // result.a = 255;
- // return result;
+*/
 };
 
 auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
 {
+ // strip off to clamp (u,v) to [-1, +1]
+ float intpart;
+ u = modff(u, &intpart);
+ v = modff(v, &intpart);
+
+ // u and v should range from [0, 1]
+ if(u < 0.0f) u += 1.0f;
+ if(v < 0.0f) v += 1.0f;
+
+ // obtain image coordinates from UV
+ unsigned int x = static_cast<unsigned int>((ptr->dx - 1)*u);
+ unsigned int y = static_cast<unsigned int>((ptr->dy - 1)*v);
+ 
+ // index of coordinate
+ unsigned int index = y*ptr->pitch + 3*x;
+ 
+ // sample image
+ vector4D<float> result;
+ result.b = ptr->data[index++]/255.0f;
+ result.g = ptr->data[index++]/255.0f;
+ result.r = ptr->data[index]/255.0f;
+ result.a = 1.0f;
+ return result;
+/*
  // strip off to clamp (u,v) to [-1, +1]
  float intpart;
  u = modff(u, &intpart);
@@ -269,21 +303,7 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  // A channel
  result.a = 1.0f;
  return result;
-
- // // obtain image coordinates from UV
- // unsigned int x = static_cast<unsigned int>((ptr->dx - 1)*u);
- // unsigned int y = static_cast<unsigned int>((ptr->dy - 1)*v);
- // 
- // // index of coordinate
- // unsigned int index = y*ptr->pitch + 3*x;
- // 
- // // sample image
- // vector4D<unsigned char> result;
- // result.b = ptr->data[index++];
- // result.g = ptr->data[index++];
- // result.r = ptr->data[index];
- // result.a = 255;
- // return result;
+*/
 };
 
 #pragma endregion

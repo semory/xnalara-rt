@@ -1,8 +1,10 @@
 #include "stdafx.h"
+#include "stdxna.h"
 #include "RT_math.h"
 #include "RT_win32.h"
 #include "RT_texture.h"
 #include "RT_raytrace.h"
+#include "RT_obsolete.h"
 #include "RT_xnalara.h"
 
 bool XNAReadBinaryString(std::ifstream& ifile, STDSTRINGW& out)
@@ -24,7 +26,7 @@ bool XNAReadBinaryString(std::ifstream& ifile, STDSTRINGW& out)
  if(value > 512) return false;
 
  // read and convert UTF-8 string
- unsigned int size = value;
+ unsigned int size = (value < 512 ? value : 511);
  if(size) {
     char data[512];
     ifile.read(&data[0], size);
@@ -88,7 +90,7 @@ bool XNAReadColor4D(std::ifstream& ifile, float* value)
  value[0] = static_cast<float>(temp[0])/255.0f;
  value[1] = static_cast<float>(temp[1])/255.0f;
  value[2] = static_cast<float>(temp[2])/255.0f;
- value[3] = static_cast<float>(temp[3])/255.0f;
+ value[3] = 1.0f; // static_cast<float>(temp[3])/255.0f; // not used in original XNALara
  return true; 
 }
 
@@ -125,6 +127,59 @@ std::vector<std::wstring> XNAParseMeshName(const std::wstring& src)
     }
  if(item.length()) retval.push_back(item);
  return retval;
+}
+
+bool XNASetShader(XNAMeshParams& out)
+{
+ // set shader
+ switch(out.render_group) {
+   case( 0) : out.shader = RG00; out.alpha = 0; break;
+   case( 1) : out.shader = RG01; out.alpha = 0; break;
+   case( 2) : out.shader = RG02; out.alpha = 0; break;
+   case( 3) : out.shader = RG03; out.alpha = 0; break;
+   case( 4) : out.shader = RG04; out.alpha = 0; break;
+   case( 5) : out.shader = RG05; out.alpha = 0; break;
+   case( 6) : out.shader = RG06; out.alpha = 1; break;
+   case( 7) : out.shader = RG07; out.alpha = 1; break;
+   case( 8) : out.shader = RG08; out.alpha = 1; break;
+   case( 9) : out.shader = RG09; out.alpha = 1; break;
+   case(10) : out.shader = RG10; out.alpha = 0; break;
+   case(11) : out.shader = RG11; out.alpha = 0; break;
+   case(12) : out.shader = RG12; out.alpha = 1; break;
+   case(13) : out.shader = RG13; out.alpha = 0; break;
+   case(14) : out.shader = RG14; out.alpha = 0; break;
+   case(15) : out.shader = RG15; out.alpha = 1; break;
+   case(16) : out.shader = RG16; out.alpha = 0; break;
+   case(17) : out.shader = RG17; out.alpha = 0; break;
+   case(18) : out.shader = RG18; out.alpha = 1; break;
+   case(19) : out.shader = RG19; out.alpha = 1; break;
+   case(20) : out.shader = RG20; out.alpha = 1; break;
+   case(21) : out.shader = RG21; out.alpha = 1; break;
+   case(22) : out.shader = RG22; out.alpha = 0; break;
+   case(23) : out.shader = RG23; out.alpha = 1; break;
+   case(24) : out.shader = RG24; out.alpha = 0; break;
+   case(25) : out.shader = RG25; out.alpha = 1; break;
+   case(26) : out.shader = RG26; out.alpha = 0; break;
+   case(27) : out.shader = RG27; out.alpha = 1; break;
+   case(28) : out.shader = RG28; out.alpha = 0; break;
+   case(29) : out.shader = RG29; out.alpha = 1; break;
+   case(30) : out.shader = RG30; out.alpha = 0; break;
+   case(31) : out.shader = RG31; out.alpha = 1; break;
+   case(32) : out.shader = RG32; out.alpha = 0; break;
+   case(33) : out.shader = RG33; out.alpha = 1; break;
+   case(34) : out.shader = RG34; out.alpha = 0; break;
+   case(35) : out.shader = RG35; out.alpha = 1; break;
+   case(36) : out.shader = RG36; out.alpha = 0; break;
+   case(37) : out.shader = RG37; out.alpha = 1; break;
+   case(38) : out.shader = RG38; out.alpha = 0; break;
+   case(39) : out.shader = RG39; out.alpha = 1; break;
+   case(40) : out.shader = RG40; out.alpha = 0; break;
+   case(41) : out.shader = RG41; out.alpha = 1; break;
+   case(42) : out.shader = RG42; out.alpha = 0; break;
+   case(43) : out.shader = RG43; out.alpha = 1; break;
+   default : return error("Invalid render group.", __FILE__, __LINE__);
+  }
+ return true;
 }
 
 bool XNAExtractMeshParams(const std::wstring& src, XNAMeshParams& out)
@@ -392,7 +447,7 @@ bool XNAComputeTangents(XNAModel* model)
 
 #pragma endregion Extra Utilities
 
-bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
+bool LoadGenericItem(const wchar_t* filename, XNAModel* model)
 {
  //
  // PHASE #1
@@ -581,6 +636,285 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
  model->facelist = std::move(facelist);
 
  // success
+ return true;
+}
+
+bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
+{
+ std::ofstream objfile("model.obj");
+ std::ofstream mtlfile("model.mtl");
+ size_t obj_offset = 0;
+ bool save_obj = false;
+
+ //
+ // PHASE #1
+ // READ FILE DATA
+ //
+
+ // open file
+ using namespace std;
+ if(!filename || !model) return error("Invalid arguments.", __FILE__, __LINE__);
+ ifstream ifile(filename, ios::binary);
+ if(!ifile) return error("Failed to open file.", __FILE__, __LINE__);
+
+ // obtain filesize
+ ifile.seekg(0, ios::end);
+ size_t filesize = (size_t)ifile.tellg();
+ ifile.seekg(0, ios::beg);
+ if(ifile.fail()) return error("Seek failure.", __FILE__, __LINE__);
+ if(!filesize) return error("File contains nothing.", __FILE__, __LINE__);
+
+ // pathname of file (switch to C++17 <filesystem>)
+ auto fullpath = std::filesystem::path(filename);
+ STDSTRINGW pathname = fullpath.parent_path(); // path no filename no extension
+ STDSTRINGW shrtname = fullpath.stem(); // filename no extension
+ STDSTRINGW shrtpath = fullpath.parent_path().filename(); // short parent pathname
+ wcout << "pathname = " << pathname.c_str() << endl;
+ wcout << "shrtname = " << shrtname.c_str() << endl;
+ wcout << "shrtpath = " << shrtpath.c_str() << endl;
+
+ // must be a classic model
+ auto classic = GetClassicModel(shrtpath.c_str());
+ if(!classic) return error(__FILE__, __LINE__);
+
+ //
+ // PHASE #2
+ // READ SKELETON
+ //
+
+ // read number of joints
+ unsigned int n_jnts = 0;
+ if(!XNAReadUint32(ifile, n_jnts)) return error(__FILE__, __LINE__);
+
+ // create bone list
+ std::vector<XNABone> bonelist;
+ if(n_jnts) bonelist.resize(n_jnts);
+ for(size_t i = 0; i < n_jnts; i++) {
+     bonelist[i].name = L"";
+     bonelist[i].parent = 0xFFFF;
+     bonelist[i].position[0] = 0.0f;
+     bonelist[i].position[1] = 0.0f;
+     bonelist[i].position[2] = 0.0f;
+    }
+
+ // read joints
+ for(unsigned int i = 0; i < n_jnts; i++) {
+     if(!XNAReadBinaryString(ifile, bonelist[i].name)) return error(__FILE__, __LINE__);
+     if(!XNAReadUint16(ifile, bonelist[i].parent)) return error(__FILE__, __LINE__);
+     if(!XNAReadVector3D(ifile, bonelist[i].position)) return error(__FILE__, __LINE__);
+     wcout << "bone[" << i << "] = " << bonelist[i].name.c_str() << endl;
+    }
+
+//
+ // PHASE #3
+ // READ MESH LIST
+ //
+
+ // start with empty meshlist to avoid loading unnecessary mesh data oftentimes
+ // stored in classic files, such as any model with an 'eyeballs' mesh
+ std::vector<XNAMesh> meshlist;
+
+ // read number of meshes
+ unsigned int n_mesh = 0;
+ if(!XNAReadUint32(ifile, n_mesh)) return error(__FILE__, __LINE__);
+ if(!n_mesh) return error(__FILE__, __LINE__);
+
+ // read meshes
+ uint32_t total_faces = 0;
+ for(unsigned int i = 0; i < n_mesh; i++)
+    {
+     // initialize mesh
+     XNAMesh mesh;
+     mesh.n_channels = 0;
+     mesh.n_textures = 0;
+     mesh.n_vert = 0;
+     mesh.n_face = 0;
+
+     // read name
+     std::wstring name;
+     if(!XNAReadBinaryString(ifile, name)) return error(__FILE__, __LINE__);
+
+     // !!! DELETE ME !!!
+     // save mesh name to OBJ file
+     if(save_obj) {
+        objfile << "# mesh[" << i << "]" << endl;
+        objfile << "# " << Unicode16ToUnicode08(name.c_str()).c_str() << endl;
+       }
+
+     // ignore mesh if not found in hardcoded parameter map
+     auto params = classic->params.find(name.c_str());
+     bool ignore = false;
+     if(params == classic->params.end()) ignore = true;
+
+     // !!! DELETE ME !!!
+     if(ignore) wcout << "mesh[" << i << "] = " << name.c_str() << " (ignored)" << endl;
+     else wcout << "mesh[" << i << "] = " << name.c_str() << endl;
+
+     // set render parameters
+     if(!ignore) {
+        mesh.params.render_group = params->second.render_group;
+        mesh.params.optional[0] = false;
+        mesh.params.optional[1] = true;
+        mesh.params.fullname = name; // want to construct a generic_item name instead?
+        mesh.params.name = name;
+        mesh.params.params[0] = params->second.params[0];
+        mesh.params.params[1] = params->second.params[1];
+        mesh.params.params[2] = params->second.params[2];
+        mesh.params.pivots; // TODO!!!
+        XNASetShader(mesh.params);
+       }
+
+     // read number of UV channels
+     // render groups 22, 23, 24, 25 are only ones that support multiple UV channels in XPS and only for AO maps
+     mesh.n_channels = 0;
+     if(!XNAReadUint32(ifile, mesh.n_channels)) return error(__FILE__, __LINE__);
+     if(!mesh.n_channels) return error(__FILE__, __LINE__);
+
+     // read number of textures
+     mesh.n_textures = 0;
+     if(!XNAReadUint32(ifile, mesh.n_textures)) return error(__FILE__, __LINE__);
+     if(!mesh.n_textures) return error(__FILE__, __LINE__);
+
+     // create texture data
+     if(mesh.n_textures) mesh.textures.resize(mesh.n_textures);
+     for(unsigned int j = 0; j < mesh.n_textures; j++)  {
+         XNATexture& texture = mesh.textures[j];
+         texture.name = L"";
+         texture.channel = 0;
+         texture.data = nullptr;
+        }
+
+     // read textures
+     for(unsigned int j = 0; j < mesh.n_textures; j++) {
+         // read texture filename
+         XNATexture& texture = mesh.textures[j];
+         if(!XNAReadBinaryString(ifile, texture.name)) return error(__FILE__, __LINE__);
+         wcout << " texture[" << i << "] = " << texture.name.c_str() << endl;
+         // read texture channels
+         texture.channel = 0;
+         if(!XNAReadUint32(ifile, texture.channel)) return error(__FILE__, __LINE__);
+         if(!(texture.channel < mesh.n_channels)) return error(__FILE__, __LINE__);
+         // strip pathname and load texture
+         texture.name = GetShortFilenameW(texture.name.c_str());
+         if(!ignore) {
+            STDSTRINGSTREAMW ss;
+            ss << pathname << L"\\" << texture.name.c_str();
+            if(!LoadTexture(ss.str().c_str(), &texture.data)) return false;
+           }
+        }
+
+     // read number of vertices
+     mesh.n_vert = 0;
+     if(!XNAReadUint32(ifile, mesh.n_vert)) return error(__FILE__, __LINE__);
+     if(!mesh.n_vert) return error(__FILE__, __LINE__);
+     cout << " # verts = " << mesh.n_vert << endl;
+
+     // read vertices
+     if(mesh.n_vert) mesh.verts.resize(mesh.n_vert);
+     for(unsigned int j = 0; j < mesh.n_vert; j++)
+        {
+         // read position, normal, color
+         if(!XNAReadVector3D(ifile, mesh.verts[j].position)) return error(__FILE__, __LINE__);
+         if(!XNAReadVector3D(ifile, mesh.verts[j].normal)) return error(__FILE__, __LINE__);
+         if(!XNAReadColor4D(ifile, mesh.verts[j].color)) return error(__FILE__, __LINE__);
+         // read UV and tangent data
+         for(unsigned int k = 0; k < mesh.n_channels; k++)
+             if(!XNAReadVector2D(ifile, mesh.verts[j].uv[k])) return error(__FILE__, __LINE__);
+         for(unsigned int k = 0; k < mesh.n_channels; k++)
+             if(!XNAReadVector4D(ifile, mesh.verts[j].tangent[k])) return error(__FILE__, __LINE__);
+
+         // read blend indices and blend weights
+         if(n_jnts)
+           {
+            // read blendindices and blendweights
+            if(!XNAReadBlendIndices(ifile, mesh.verts[j].blendindices)) return error(__FILE__, __LINE__);
+            if(!XNAReadVector4D(ifile, mesh.verts[j].blendweights)) return error(__FILE__, __LINE__);
+
+            // sum blendweights
+            float sum = mesh.verts[j].blendweights[0];
+            sum += mesh.verts[j].blendweights[1];
+            sum += mesh.verts[j].blendweights[2];
+            sum += mesh.verts[j].blendweights[3];
+
+            // fix blendweights
+            if(sum == 0.0f) {
+               mesh.verts[j].blendweights[0] = 1.0f;
+               mesh.verts[j].blendweights[1] = 0.0f;
+               mesh.verts[j].blendweights[2] = 0.0f;
+               mesh.verts[j].blendweights[3] = 0.0f;
+              }
+            else if(sum != 1.0f) {
+               mesh.verts[j].blendweights[0] /= sum;
+               mesh.verts[j].blendweights[1] /= sum;
+               mesh.verts[j].blendweights[2] /= sum;
+               mesh.verts[j].blendweights[3] /= sum;
+              }
+           }
+
+         // save data to OBJ file
+         if(save_obj) {
+            objfile << "v " << mesh.verts[j].position[0] << " ";
+            objfile << mesh.verts[j].position[1] << " ";
+            objfile << mesh.verts[j].position[2] << endl;
+           }
+        }
+
+     // read number of faces
+     mesh.n_face = 0;
+     if(!XNAReadUint32(ifile, mesh.n_face)) return error(__FILE__, __LINE__);
+     if(!mesh.n_face) return error(__FILE__, __LINE__);
+     cout << " # faces = " << mesh.n_face << endl;
+
+     // read faces
+     mesh.faces.resize(mesh.n_face);
+     for(unsigned int j = 0; j < mesh.n_face; j++)
+         if(!XNAReadFace(ifile, mesh.faces[j].refs)) return error(__FILE__, __LINE__);
+
+     // save OBJ face data
+     if(save_obj) {
+        objfile << "# facelist[" << i << "]" << endl;
+        objfile << "o " << Unicode16ToUnicode08(name.c_str()).c_str() << endl;
+        for(size_t j = 0; j < mesh.n_face; j++) {
+            objfile << "f " << (obj_offset + mesh.faces[j].refs[0] + 1) << " "
+                    << (obj_offset + mesh.faces[j].refs[1] + 1) << " "
+                    << (obj_offset + mesh.faces[j].refs[2] + 1) << endl;
+           }
+        obj_offset += mesh.n_vert;
+       }
+
+     // insert mesh into meshlist and accumulate faces
+     if(!ignore) {
+        meshlist.push_back(mesh); 
+        total_faces += mesh.n_face;
+       }
+    }
+
+ // accumulate faces
+ std::vector<XNAGlobalFace> facelist(total_faces);
+ uint32_t foffset = 0;
+ for(uint32_t i = 0; i < meshlist.size(); i++) {
+     for(uint32_t j = 0; j < meshlist[i].n_face; j++) {
+         uint32_t findex = foffset + j;
+         facelist[findex].refs[0] = meshlist[i].faces[j].refs[0];
+         facelist[findex].refs[1] = meshlist[i].faces[j].refs[1];
+         facelist[findex].refs[2] = meshlist[i].faces[j].refs[2];
+         facelist[findex].mesh_index = i;
+        }
+     foffset += meshlist[i].n_face;
+    }
+
+ // assign model
+ model->isXPS = false;
+ model->header = XNAHeader();
+ model->n_jnts = n_jnts;
+ model->n_mesh = static_cast<unsigned int>(meshlist.size());
+ model->bonelist = std::move(bonelist);
+ model->meshlist = std::move(meshlist);
+ model->facelist = std::move(facelist);
+
+ // compute tangents
+ if(!XNAComputeTangents(model)) return false;
+
  return true;
 }
 

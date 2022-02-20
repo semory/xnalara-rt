@@ -1,9 +1,13 @@
 #ifndef __STDAFX_H
 #define __STDAFX_H
 
+// Windows Headers
 #define NOMINMAX
 #include<windows.h>
+#include<atlbase.h>
+#include<wincodec.h>
 
+// Standard Headers
 #include<iostream>
 #include<fstream>
 #include<sstream>
@@ -11,11 +15,16 @@
 #include<deque>
 #include<stack>
 #include<vector>
+#include<map>
+#include<set>
 #include<memory>
 #include<random>
 #include<climits>
 #include<functional>
 #include<algorithm>
+
+// C++17 Headers
+#include<filesystem>
 
 #ifndef RC_INVOKED
 
@@ -33,9 +42,22 @@ inline bool error(const char* message, const char* file, int line)
  return false;
 }
 
+inline bool error(const char* file, int line)
+{
+ std::cout << "Error. " << std::endl;
+ std::cout << "  File: " << file << std::endl;
+ std::cout << "  Line: " << line << std::endl;
+ return false;
+}
+
 #endif
 
 #ifndef RC_INVOKED
+
+typedef std::basic_string<CHAR> STDSTRINGA;
+typedef std::basic_string<WCHAR> STDSTRINGW;
+typedef std::basic_stringstream<CHAR> STDSTRINGSTREAMA;
+typedef std::basic_stringstream<WCHAR> STDSTRINGSTREAMW;
 
 inline uint16_t StringToUint16(const char* str) { return static_cast<uint16_t>(atoi(str)); }
 inline uint16_t StringToUint16(const wchar_t* str) { return static_cast<uint16_t>(_wtoi(str)); }

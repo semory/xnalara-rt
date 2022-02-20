@@ -9,6 +9,7 @@ struct XNATextureData;
 struct XNATexture;
 struct XNAFace;
 struct XNAGlobalFace;
+struct XNACameraTarget;
 struct XNAMeshParams;
 struct XNAMesh;
 struct XNAModel;
@@ -101,6 +102,7 @@ struct XNAModel {
  std::vector<XNAGlobalFace> facelist;
 };
 
+bool LoadGenericItem(const wchar_t* filename, XNAModel* model);
 bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model);
 bool LoadXPSMeshBin(const wchar_t* filename, XNAModel* model);
 bool FreeXNAMesh(XNAModel* model);

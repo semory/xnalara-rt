@@ -254,7 +254,19 @@ bool GetShadowsState(void)
 
 bool LoadModel(const wchar_t* filename)
 {
- if(!LoadXPSMeshBin(filename, &model)) return error("Failed to load mesh binary.", __FILE__, __LINE__);
+ auto fullpath = std::filesystem::path(filename);
+ STDSTRINGW extension = fullpath.extension();
+ if(_wcsicmp(extension.c_str(), L".mesh") == 0) {
+    if(!LoadXNAMeshBin(filename, &model))
+       return error("Failed to load mesh binary.", __FILE__, __LINE__);
+   }
+ else if(_wcsicmp(extension.c_str(), L".xps") == 0) {
+    if(!LoadXPSMeshBin(filename, &model))
+       return error("Failed to load XPS binary.", __FILE__, __LINE__);
+   }
+ else return false;
+
+ // construct model
  bvh.construct(&model);
  return true;
 }
@@ -525,6 +537,91 @@ void InitDepthTest(float tn, float tf)
  depth_tmax = tf;
 }
 
+void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha)
+{
+ // CASE #1: INVISIBLE PIXEL
+ if(color.a == 0) return;
+
+ // CASE #2: FIRST PIXEL IS SIMPLY INSERTED
+ if(!depth_elem) {
+    depth_data[depth_elem].color = color;
+    depth_data[depth_elem].t = dt;
+    depth_data[depth_elem].mesh_index = mesh_index;
+    depth_elem = 1;
+    return;
+   }
+
+ constexpr float epsilon = 1.0e-6f;
+ uint32_t j = depth_elem - 1;
+ uint32_t k = depth_elem;
+
+ // CASE #3: ANYTHING BEHIND LAST OPAQUE PIXEL IS HIDDEN
+ if(depth_data[j].color.a == 1.0f && !(dt < depth_data[j].t))
+    return;
+
+ // CASE #4: HAVEN'T REACHED LIMIT
+ if(depth_elem < MAXPIXELDEPTH)
+   {
+    //         9
+    // 3 4 7 8 9
+    //         j k
+
+    // shift data until dt is greater than depth_data[j]
+    for(size_t i = 0; i < depth_elem; i++) {
+        if(dt < depth_data[j].t) {
+           depth_data[k] = depth_data[j];
+           j--;
+           k--;
+          }
+        else
+           break;
+       }
+    // insert new data
+    depth_data[k].color = color;
+    depth_data[k].t = dt;
+    depth_data[k].mesh_index = mesh_index;
+    // set number of colors
+    if(color.a == 1.0f) depth_elem = k + 1;
+    else depth_elem++;
+   }
+ // CASE #5: REACHED LIMIT
+ else
+   {
+    // keep going if less
+    if((dt < depth_data[j].t) || (dt == depth_data[j].t && color.a < 1.0f)) {
+       j--;
+       k--;
+      }
+    // otherwise quit
+    else return;
+
+    // stop shifting when new t-value is greater than depth_data[j]
+    for(size_t i = 1; i < depth_elem; i++) {
+        // break when certainly true
+        // dt is considerably larger: (30 - 20) > epsilon = true
+        if((dt - depth_data[j].t) > epsilon) break;
+        // shift when certainly true
+        // dt is considerably smaller: (30 - 20) > epsilon = true
+        if((depth_data[j].t - dt) > epsilon) {
+           depth_data[k] = depth_data[j];
+           j--;
+           k--;
+          }
+        // dt is really close, must resolve overlapping meshes, let alpha meshes go first
+        else if(alpha) {
+           depth_data[k] = depth_data[j];
+           j--;
+           k--;
+          }
+        else break;
+       }
+    depth_data[k].color = color;
+    depth_data[k].t = dt;
+    depth_data[k].mesh_index = mesh_index;
+    if(color.a == 1.0f) depth_elem = k + 1;
+   }
+}
+
 void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha)
 {
  // NOTES:
@@ -539,7 +636,7 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index
  // CASE #1: INVISIBLE PIXEL
  if(color.a == 0) return;
 
- // CASE #2: FIRST PIXEL
+ // CASE #2: FIRST PIXEL IS SIMPLY INSERTED
  if(!depth_elem) {
     depth_data[depth_elem].color = color;
     depth_data[depth_elem].t = dt;
@@ -549,10 +646,10 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index
    }
 
  constexpr float epsilon = 1.0e-6f;
-
- // CASE #3: ANYTHING CONSIDERABLY BEHIND LAST OPAQUE PIXEL IS HIDDEN
  uint32_t j = depth_elem - 1;
  uint32_t k = depth_elem;
+
+ // CASE #3: ANYTHING CONSIDERABLY BEHIND LAST OPAQUE PIXEL IS HIDDEN
  if(depth_data[j].color.a == 1.0f && ((dt - depth_data[j].t) > epsilon))
     return;
 
@@ -628,22 +725,18 @@ void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index
 
 vector4D<float> BlendPixels(void)
 {
- // if there is nothing to blend, return the clear color
- if(depth_elem == 0) return clearcolor;
-
- // blend sorted pixels (front-to-back)
- vector4D<float> front = depth_data[0].color;
- for(uint32_t i = 1; i < depth_elem; i++) {
-     const vector4D<float>& back = depth_data[i].color;
-     float af = front.a;
-     float one_minus_af = 1.0f - front.a;
-     front.r = front.r*af + one_minus_af*back.a*back.r;
-     front.g = front.g*af + one_minus_af*back.a*back.g;
-     front.b = front.b*af + one_minus_af*back.a*back.b;
-     front.a = af + one_minus_af*back.a;
+ // blend sorted pixels back-to-front
+ vector4D<float> back = clearcolor;
+ for(uint32_t i = 0; i < depth_elem; i++) {
+     uint32_t j = depth_elem - i - 1;
+     vector4D<float>& front = depth_data[j].color;
+     float ONE_MINUS_ALPHA = 1.0f - front.a;
+     back.r = front.a*depth_data[j].color.r + ONE_MINUS_ALPHA*back.r*back.a;
+     back.g = front.a*depth_data[j].color.g + ONE_MINUS_ALPHA*back.g*back.a;
+     back.b = front.a*depth_data[j].color.b + ONE_MINUS_ALPHA*back.b*back.a;
+     back.a = front.a + ONE_MINUS_ALPHA*back.a;
     }
-
- return front;
+ return back;
 }
 
 #pragma endregion RAYTRACING
@@ -693,7 +786,7 @@ inline vector4D<float> SampleDiffuse(const XNAMesh& mesh, uint32_t index, const 
  sample[0] *= color[0];
  sample[1] *= color[1];
  sample[2] *= color[2];
- sample[3] *= color[3];
+ sample[3] *= color[3]; // OK, always 1.0f
  return sample;
 }
 

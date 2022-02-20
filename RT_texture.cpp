@@ -1,7 +1,9 @@
 #include "stdafx.h"
-#include "RT_math.h"
-#include "RT_texture.h"
 #include "RT_win32.h"
+#include "RT_math.h"
+#include "RT_dds.h"
+#include "RT_png.h"
+#include "RT_texture.h"
 
 //
 // SAMPLERS
@@ -98,6 +100,7 @@ auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
 
 auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
 {
+/*
  // strip off to clamp (u,v) to [-1, +1]
  float intpart;
  u = modff(u, &intpart);
@@ -121,7 +124,8 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  result.r = ptr->data[index]/255.0f;
  result.a = 1.0f;
  return result;
-/*
+*/
+
  // strip off to clamp (u,v) to [-1, +1]
  float intpart;
  u = modff(u, &intpart);
@@ -198,11 +202,11 @@ auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
  // A channel
  result.a = 1.0f;
  return result;
-*/
 };
 
 auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
 {
+/*
  // strip off to clamp (u,v) to [-1, +1]
  float intpart;
  u = modff(u, &intpart);
@@ -226,7 +230,8 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  result.r = ptr->data[index]/255.0f;
  result.a = 1.0f;
  return result;
-/*
+*/
+
  // strip off to clamp (u,v) to [-1, +1]
  float intpart;
  u = modff(u, &intpart);
@@ -303,7 +308,6 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  // A channel
  result.a = 1.0f;
  return result;
-*/
 };
 
 #pragma endregion
@@ -350,106 +354,106 @@ bool XNATextureManager::LoadTexture(const wchar_t* filename, XNATextureData** ou
  // filename is not in hash table, create new texture
  if(entry == std::end(hashmap))
    {
-    // open image file
+    // extract extension
     using namespace std;
-    ifstream ifile(filename, ios::binary);
-    if(!ifile) {
-      std::wcout << filename << std::endl;
-       return error("", __FILE__, __LINE__);
+    STDSTRINGW extension = std::filesystem::path(filename).extension();
+
+    // DDS
+    if(_wcsicmp(extension.c_str(), L".dds") == 0)
+      {
+       // load DDS file
+       DDSDATA ddsd;
+       if(!LoadDDS(filename, &ddsd)) return error(__FILE__, __LINE__);
+
+       // determine format
+       XNATextureFormat format;
+       if(ddsd.bpp == 24) format = XNATextureFormat::BGR;
+       else if(ddsd.bpp == 32) {
+          if(ddsd.has_alpha) format = XNATextureFormat::BGRA;
+          else format = XNATextureFormat::BGRX;
+         }
+       else return error(__FILE__, __LINE__);
+
+       // assign sampler
+       std::function<vector4D<float>(XNATextureData*, float, float)> sampler;
+       switch(format) {
+         case(XNATextureFormat::BGR)  : sampler = sampler_BGR;  break;
+         case(XNATextureFormat::BGRX) : sampler = sampler_BGRX; break;
+         case(XNATextureFormat::BGRA) : sampler = sampler_BGRA; break;
+         default : return error(__FILE__, __LINE__);
+        }
+
+       // create texture reference
+       XNATextureRef entry;
+       entry.data.dx = ddsd.dx;
+       entry.data.dy = ddsd.dy;
+       entry.data.pitch = ddsd.pitch_bytes;
+       entry.data.type = 0;
+       entry.data.mipmap = 0;
+       entry.data.format = format;
+       entry.data.data = ddsd.data.get();
+       entry.data.sampler = sampler;
+       entry.refs = 1;
+
+       // insert and assign texture
+       auto iter = hashmap.insert(hashmap_type::value_type(filename, std::move(entry)));
+       if(iter.second == false) return error(__FILE__, __LINE__);
+
+       // pass ownership of unique_ptr data to texture manager
+       ddsd.data.release();
+       *out = &iter.first->second.data;
       }
+    // PNG
+    else if(_wcsicmp(extension.c_str(), L".png") == 0)
+      {
+       PNGDATA pngdata;
+       if(!LoadPNG(filename, &pngdata)) return error(__FILE__, __LINE__);
 
-    // compute filesize
-    ifile.seekg(0, ios::end);
-    size_t filesize = (size_t)ifile.tellg();
-    ifile.seekg(0, ios::beg);
-    if(ifile.fail()) return error("", __FILE__, __LINE__);
+       // determine format
+       XNATextureFormat format;
+       if(pngdata.bpp == 24) format = XNATextureFormat::BGR;
+       else if(pngdata.bpp == 32) {
+          if(pngdata.has_alpha) format = XNATextureFormat::BGRA;
+          else format = XNATextureFormat::BGRX;
+         }
+       else return error(__FILE__, __LINE__);
 
-    // must have at least a header
-    if(filesize < 0x20) return error("", __FILE__, __LINE__);
+       // assign sampler
+       std::function<vector4D<float>(XNATextureData*, float, float)> sampler;
+       switch(format) {
+         case(XNATextureFormat::BGR)  : sampler = sampler_BGR;  break;
+         case(XNATextureFormat::BGRX) : sampler = sampler_BGRX; break;
+         case(XNATextureFormat::BGRA) : sampler = sampler_BGRA; break;
+         default : return error(__FILE__, __LINE__);
+        }
 
-    // read DDS signature + header
-    DWORD ddsh[32];
-    ifile.read((char*)&ddsh[0], 32*sizeof(DWORD));
-    if(ifile.fail()) return error("", __FILE__, __LINE__);
+       // create texture reference
+       XNATextureRef entry;
+       entry.data.dx = pngdata.dx;
+       entry.data.dy = pngdata.dy;
+       entry.data.pitch = pngdata.pitch_bytes;
+       entry.data.type = 0;
+       entry.data.mipmap = 0;
+       entry.data.format = format;
+       entry.data.data = pngdata.data.get();
+       entry.data.sampler = sampler;
+       entry.refs = 1;
 
-    // validate header
-    if(ddsh[0] != 0x20534444ul) return error("", __FILE__, __LINE__);
-    if(!ddsh[3] || !ddsh[4]) return error("", __FILE__, __LINE__); // allow this?
-    if(!ddsh[5]) return error("", __FILE__, __LINE__);
+       // insert and assign texture
+       auto iter = hashmap.insert(hashmap_type::value_type(filename, std::move(entry)));
+       if(iter.second == false) return error(__FILE__, __LINE__);
 
-    // read data
-    size_t datasize = filesize - 128ul; // filesize - DDS_header_size
-    unique_ptr<unsigned char[]> data(new unsigned char[datasize]);
-    ifile.read((char*)data.get(), datasize);
-    if(ifile.fail()) return error("", __FILE__, __LINE__);
-
-    // determine texture format
-    XNATextureFormat format;
-    if(ddsh[22] == 24) {
-       if(ddsh[20] == 0x40) format = XNATextureFormat::BGR;
-       else return error("", __FILE__, __LINE__);
+       // pass ownership of unique_ptr data to texture manager
+       pngdata.data.release();
+       *out = &iter.first->second.data;
       }
-    else if(ddsh[22] == 32) {
-       if(ddsh[20] == 0x40) format = XNATextureFormat::BGRX;
-       else if(ddsh[20] == 0x41) format = XNATextureFormat::BGRA;
-       else return error("", __FILE__, __LINE__);
-      }
-    else return error("", __FILE__, __LINE__);
-
-    // assign sampler
-    std::function<vector4D<float>(XNATextureData*, float, float)> sampler;
-    switch(format) {
-      case(XNATextureFormat::BGR)  : sampler = sampler_BGR;  break;
-      case(XNATextureFormat::BGRX) : sampler = sampler_BGRX; break;
-      case(XNATextureFormat::BGRA) : sampler = sampler_BGRA; break;
-      default : return error("", __FILE__, __LINE__);
-     }
-
-    // switch(header.format) {
-    //   case(XNATextureFormat::BGRA) : sampler = sampler_BGRA; break;
-    //   case(XNATextureFormat::BGRX) : sampler = sampler_BGRX; break;
-    //   case(XNATextureFormat::BGR) :  sampler = sampler_BGR; break;
-    //   case(0x01) : break; // DXT1 = DXGI_FORMAT_BC1_UNORM (71)
-    //   case(0x02) : break; // DXT3 = DXGI_FORMAT_BC2_UNORM (74)
-    //   case(0x03) : break; // DXT5 = DXGI_FORMAT_BC3_UNORM (77)
-    //   case(0x04) : break; // ATI1 = DXGI_FORMAT_BC4_UNORM (80)
-    //   case(0x05) : break; // ATI2 = DXGI_FORMAT_BC5_UNORM (83)
-    //   case(0x06) : break; // B5_G6_R5    = DXGI_FORMAT_B5G6R5_UNORM (85)
-    //   case(0x07) : break; // B5_G5_R5_A1 = DXGI_FORMAT_B5G5R5A1_UNORM (86)
-    //   case(0x08) : break; // B8_G8_R8_A8 = DXGI_FORMAT_B8G8R8A8_UNORM (87) (IMPORTANT)
-    //   case(0x09) : break; // B8_G8_R8_X8 = DXGI_FORMAT_B8G8R8X8_UNORM (88) (IMPORTANT)
-    //   case(0x0A) : break; // BC6H = DXGI_FORMAT_BC6H_UF16 (95)
-    //   case(0x0B) : break; // BC7_ = DXGI_FORMAT_BC7_UNORM (98)
-    //   case(0x0C) : break; // R8_G8_B8_A8 = DXGI_FORMAT_R8G8B8A8_UNORM (28)
-    //   case(0x0D) : break;
-    //   case(0x0E) : break;
-    //   case(0x0F) : break;
-    //   default : return error("", __FILE__, __LINE__);
-    //  }
-
-    // create texture reference
-    XNATextureRef entry;
-    entry.data.dx = ddsh[3];
-    entry.data.dy = ddsh[4];
-    entry.data.pitch = ddsh[5];
-    entry.data.type = 0;
-    entry.data.mipmap = 0;
-    entry.data.format = format;
-    entry.data.data = std::move(data);
-    entry.data.sampler = sampler;
-    entry.refs = 1;
-
-    // insert and assign texture
-    auto iter = hashmap.insert(hashmap_type::value_type(filename, std::move(entry)));
-    if(iter.second == false) return error("", __FILE__, __LINE__);
-
-    // pass ownership of unique_ptr to texture manager
-    data.release();
-    *out = &iter.first->second.data;
+    // other
+    else
+       return error(__FILE__, __LINE__);
    }
  // reuse texture
  else {
-    if(entry->second.refs == 0) return error("", __FILE__, __LINE__);
+    if(entry->second.refs == 0) return error(__FILE__, __LINE__);
     entry->second.refs++;
     *out = &entry->second.data;
    }
@@ -470,8 +474,8 @@ bool XNATextureManager::FreeTexture(const wchar_t* filename)
  // delete texture if no longer referenced
  resource.refs--;
  if(resource.refs == 0) {
-    // if(resource.data.data) delete[] resource.data.data;
-    // resource.data.data = nullptr;
+    if(resource.data.data) delete[] resource.data.data;
+    resource.data.data = nullptr;
     // resource.refs = 0;
     hashmap.erase(entry);
    }

@@ -32,7 +32,7 @@ struct XNATextureData {
  unsigned int type;
  unsigned short mipmap;
  XNATextureFormat format;
- std::unique_ptr<unsigned char[]> data;
+ const unsigned char* data;
  std::function<vector4D<float>(XNATextureData*, float, float)> sampler;
 };
 

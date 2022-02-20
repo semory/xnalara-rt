@@ -852,8 +852,8 @@ float ShadowTest(const RTDynamicBVH& bvh, const float* hp, const float* ld)
 
               // let this be greater than 0 so that it doesn't intersect the same triangle
               // or any other triangle overlapping it
-              if(result.t < 1.0e-6f) continue;
-
+              if(result.t < 1.0e-6f) continue; // technically needs to be not the same face
+  
               // barycentric coordinates
               float u = result.u;
               float v = result.v;
@@ -865,13 +865,9 @@ float ShadowTest(const RTDynamicBVH& bvh, const float* hp, const float* ld)
                u*v1.uv[0][1] + v*v2.uv[0][1] + w*v3.uv[0][1]
               };
 
-              // diffuse sample
+              // diffuse sample and compute percentage
               auto DM_sample = SampleTexture(bvh.model->meshlist[face.mesh_index].textures[0], uv[0], uv[1]);
-              float alpha = DM_sample.w;
-              if(alpha == 1.0f) return 0.0f;
-
-              // compute percentage
-              scale *= (1.0f - alpha);
+              scale *= (1.0f - DM_sample.a);
              }
          }
        // put children on stack
@@ -889,6 +885,16 @@ float ShadowTest(const RTDynamicBVH& bvh, const float* hp, const float* ld)
 #pragma endregion SHADOWS
 
 #pragma region RENDERGROUP_SHADERS
+
+inline void InterpolatePosition(const XNAShaderData* input, float* P)
+{
+ float u = input->u;
+ float v = input->v;
+ float w = input->w;
+ P[0] = u*input->v0->position[0] + v*input->v1->position[0] + w*input->v2->position[0];
+ P[1] = u*input->v0->position[1] + v*input->v1->position[1] + w*input->v2->position[1];
+ P[2] = u*input->v0->position[2] + v*input->v1->position[2] + w*input->v2->position[2];
+}
 
 inline float InterpolateNormal(const XNAShaderData* input, float* N)
 {
@@ -2009,17 +2015,13 @@ vector4D<float> RG20(const XNAShaderData* input)
         float dot2 = 2.0f*dot1;
     
         // if light intensity is not zero
-        if(dot1 > 1.0e-6f)
+        if(dot1) // > 1.0e-6f)
           {
            // shadow test
            float scale = 1.0f;
            if(enable_shadows) {
-              // interpolated hitpoint
-              float hitpoint[3] = {
-               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
-               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
-               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
-              };
+              float hitpoint[3];
+              InterpolatePosition(input, &hitpoint[0]);
               scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
              }
            if(scale)

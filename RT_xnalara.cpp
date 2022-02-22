@@ -129,8 +129,14 @@ std::vector<std::wstring> XNAParseMeshName(const std::wstring& src)
  return retval;
 }
 
-bool XNASetShader(XNAMeshParams& out)
+bool XNASetShader(XNAMeshParams& out, bool thorglow = false)
 {
+ if(thorglow) {
+    out.shader = RG_thorglow;
+    out.alpha = 1;
+    return true;
+   }
+
  // set shader
  switch(out.render_group) {
    case( 0) : out.shader = RG00; out.alpha = 0; break;
@@ -641,11 +647,6 @@ bool LoadGenericItem(const wchar_t* filename, XNAModel* model)
 
 bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
 {
- std::ofstream objfile("model.obj");
- std::ofstream mtlfile("model.mtl");
- size_t obj_offset = 0;
- bool save_obj = false;
-
  //
  // PHASE #1
  // READ FILE DATA
@@ -702,7 +703,6 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      if(!XNAReadBinaryString(ifile, bonelist[i].name)) return error(__FILE__, __LINE__);
      if(!XNAReadUint16(ifile, bonelist[i].parent)) return error(__FILE__, __LINE__);
      if(!XNAReadVector3D(ifile, bonelist[i].position)) return error(__FILE__, __LINE__);
-     wcout << "bone[" << i << "] = " << bonelist[i].name.c_str() << endl;
     }
 
 //
@@ -734,12 +734,9 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      std::wstring name;
      if(!XNAReadBinaryString(ifile, name)) return error(__FILE__, __LINE__);
 
-     // !!! DELETE ME !!!
-     // save mesh name to OBJ file
-     if(save_obj) {
-        objfile << "# mesh[" << i << "]" << endl;
-        objfile << "# " << Unicode16ToUnicode08(name.c_str()).c_str() << endl;
-       }
+     // thorwireframe
+     bool thorwireframe = false;
+     if(_wcsicmp(name.c_str(), L"thorwireframe") == 0) thorwireframe = true;
 
      // ignore mesh if not found in hardcoded parameter map
      auto params = classic->params.find(name.c_str());
@@ -754,14 +751,13 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      if(!ignore) {
         mesh.params.render_group = params->second.render_group;
         mesh.params.optional[0] = false;
-        mesh.params.optional[1] = true;
+        mesh.params.optional[1] = params->second.visible;
         mesh.params.fullname = name; // want to construct a generic_item name instead?
         mesh.params.name = name;
         mesh.params.params[0] = params->second.params[0];
         mesh.params.params[1] = params->second.params[1];
         mesh.params.params[2] = params->second.params[2];
-        mesh.params.pivots; // TODO!!!
-        XNASetShader(mesh.params);
+        XNASetShader(mesh.params, thorwireframe);
        }
 
      // read number of UV channels
@@ -850,13 +846,6 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
                mesh.verts[j].blendweights[3] /= sum;
               }
            }
-
-         // save data to OBJ file
-         if(save_obj) {
-            objfile << "v " << mesh.verts[j].position[0] << " ";
-            objfile << mesh.verts[j].position[1] << " ";
-            objfile << mesh.verts[j].position[2] << endl;
-           }
         }
 
      // read number of faces
@@ -869,18 +858,6 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      mesh.faces.resize(mesh.n_face);
      for(unsigned int j = 0; j < mesh.n_face; j++)
          if(!XNAReadFace(ifile, mesh.faces[j].refs)) return error(__FILE__, __LINE__);
-
-     // save OBJ face data
-     if(save_obj) {
-        objfile << "# facelist[" << i << "]" << endl;
-        objfile << "o " << Unicode16ToUnicode08(name.c_str()).c_str() << endl;
-        for(size_t j = 0; j < mesh.n_face; j++) {
-            objfile << "f " << (obj_offset + mesh.faces[j].refs[0] + 1) << " "
-                    << (obj_offset + mesh.faces[j].refs[1] + 1) << " "
-                    << (obj_offset + mesh.faces[j].refs[2] + 1) << endl;
-           }
-        obj_offset += mesh.n_vert;
-       }
 
      // insert mesh into meshlist and accumulate faces
      if(!ignore) {
@@ -913,7 +890,7 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
  model->facelist = std::move(facelist);
 
  // compute tangents
- if(!XNAComputeTangents(model)) return false;
+ // if(!XNAComputeTangents(model)) return false;
 
  return true;
 }

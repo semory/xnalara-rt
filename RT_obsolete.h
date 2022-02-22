@@ -14,15 +14,15 @@
 struct XNAClassicMeshParams {
  uint16_t render_group;
  float params[3];
+ bool visible;
 };
 
 struct XNAClassicModel {
- bool laracroft;
  std::map<STDSTRINGW, XNAClassicMeshParams> params;
  std::map<STDSTRINGW, XNACameraTarget> targets;
- void AddMeshParams(const STDSTRINGW& name, uint16_t rg);
- void AddMeshParams(const STDSTRINGW& name, uint16_t rg, float a);
- void AddMeshParams(const STDSTRINGW& name, uint16_t rg, float a, float b, float c);
+ void AddMeshParams(const STDSTRINGW& name, uint16_t rg, bool visible = true);
+ void AddMeshParams(const STDSTRINGW& name, uint16_t rg, float a, bool visible = true);
+ void AddMeshParams(const STDSTRINGW& name, uint16_t rg, float a, float b, float c, bool visible = true);
  void AddCameraTarget(const STDSTRINGW& name, const STDSTRINGW& b1);
  void AddCameraTarget(const STDSTRINGW& name, const STDSTRINGW& b1, const STDSTRINGW& b2);
 };

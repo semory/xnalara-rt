@@ -7,20 +7,35 @@ using namespace std;
 
 int Run(void)
 {
- // load classic model
- XNAModel model;
- // LoadXNAMeshBin(L"D:\\XNALara\\Models\\original\\albino_spider\\albino_spider.mesh", &model);
- // LoadXNAMeshBin(L"D:\\XNALara\\Models\\original\\alister\\alister.mesh", &model);
- // LoadXNAMeshBin(L"D:\\XNALara\\Models\\original\\amanda_heavy\\amanda_heavy.mesh", &model);
- // LoadXNAMeshBin(L"D:\\XNALara\\Models\\original\\amanda_light\\amanda_light.mesh", &model);
- // LoadXNAMeshBin(L"D:\\XNALara\\Models\\original\\lara_bathing_suit\\lara_bathing_suit.mesh", &model);
+ // having trouble with this data: v0 = 1.94833, 24.5353, 3.01768
+ // having trouble with this data: v1 = 4.37479, 24.7778, 1.29473
+ // having trouble with this data: v2 = 3.69471, 23.2584, 2.71028
+ // having trouble with this data: uv0 = 0, 1
+ // having trouble with this data: uv1 = 0, 0
+ // having trouble with this data: uv2 = 0.5, 0.5
 
  // load model into ray tracer
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\albino_spider\\albino_spider.mesh")) return 0;
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\alister\\alister.mesh")) return 0;
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\amanda_heavy\\amanda_heavy.mesh")) return 0;
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\amanda_light\\amanda_light.mesh")) return 0;
- if(!LoadModel(L"D:\\XNALara\\Models\\original\\lara_bathing_suit\\lara_bathing_suit.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\amelia\\amelia.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\braid\\braid.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\croft_manor_back\\croft_manor_back.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\croft_manor_hall\\croft_manor_hall.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\croft_manor_hall_lq\\croft_manor_hall_lq.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\diver_captain\\diver_captain.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\doppelganger\\doppelganger.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\dummy\\dummy.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\excalibur\\excalibur.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\foliage_tree1\\foliage_tree1.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\foliage_tree2\\foliage_tree2.mesh")) return 0; // UV mapping problem with sampler
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\foliage_tree3\\foliage_tree3.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\foliage_tree4\\foliage_tree4.mesh")) return 0; // UV mapping problem with sampler
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\glass_cage\\glass_cage.mesh")) return 0;
+ if(!LoadModel(L"D:\\XNALara\\Models\\original\\glasses\\glasses.mesh")) return 0;
+
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\lara_bathing_suit\\lara_bathing_suit.mesh")) return 0;
  // if(!LoadModel(L"C:\\Users\\moby_\\Desktop\\xnalara\\models\\Alcina Dimitrescu\\xps.xps"))
  // if(!LoadModel(L"C:\\Users\\moby_\\Desktop\\xnalara\\models\\RG17\\xps.xps"))
 

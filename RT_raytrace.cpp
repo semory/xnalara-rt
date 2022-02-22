@@ -39,7 +39,7 @@ static bool enable_shadows = true;
 static bool k_conservation = true;
 static float ambient_co[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 static float ka = 0.33f;
-static float ks = 0.10f;
+static float ks = 0.10f; // this is a material property, only use with render groups that support specular
 
 // sampling variables
 static uint32_t n_samples_xy = 0;
@@ -61,7 +61,7 @@ struct DepthPixel {
  float t;
  uint32_t mesh_index;
 };
-static const uint32_t MAXPIXELDEPTH = 128;
+static const uint32_t MAXPIXELDEPTH = 1024; //128;
 static DepthPixel depth_data[MAXPIXELDEPTH];
 static uint32_t depth_elem = 0;
 static float depth_tmin = 0.0f;
@@ -268,6 +268,9 @@ bool LoadModel(const wchar_t* filename)
 
  // construct model
  bvh.construct(&model);
+
+ // save OBJ?
+ // ConvertToOBJ(&model, L"output.obj");
  return true;
 }
 
@@ -537,7 +540,7 @@ void InitDepthTest(float tn, float tf)
  depth_tmax = tf;
 }
 
-void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha)
+void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha)
 {
  // CASE #1: INVISIBLE PIXEL
  if(color.a == 0) return;
@@ -562,10 +565,6 @@ void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t me
  // CASE #4: HAVEN'T REACHED LIMIT
  if(depth_elem < MAXPIXELDEPTH)
    {
-    //         9
-    // 3 4 7 8 9
-    //         j k
-
     // shift data until dt is greater than depth_data[j]
     for(size_t i = 0; i < depth_elem; i++) {
         if(dt < depth_data[j].t) {
@@ -622,7 +621,7 @@ void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t me
    }
 }
 
-void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha)
+void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha)
 {
  // NOTES:
  // To solve the overlapping mesh problem, I currently shift or break during
@@ -852,7 +851,7 @@ float ShadowTest(const RTDynamicBVH& bvh, const float* hp, const float* ld)
 
               // let this be greater than 0 so that it doesn't intersect the same triangle
               // or any other triangle overlapping it
-              if(result.t < 1.0e-6f) continue; // technically needs to be not the same face
+              if(result.t < 1.0e-4f) continue; // technically needs to be not the same face
   
               // barycentric coordinates
               float u = result.u;
@@ -1349,32 +1348,18 @@ vector4D<float> RG07(const XNAShaderData* input)
              }
            if(scale)
              {
-              // wr is normalized reflection vector
-              vector3D<float> wr;
-              wr[0] = -wi[0] + dot2*N[0];
-              wr[1] = -wi[1] + dot2*N[1];
-              wr[2] = -wi[2] + dot2*N[2];
-              vector3D_normalize(&wr[0]);
-           
-              // color components
-              float ccd[3] = { // diffuse
-               dlight.color[0]*dot1*dlight.intensity,
-               dlight.color[1]*dot1*dlight.intensity,
-               dlight.color[2]*dot1*dlight.intensity
-              };
-           
               // sum components
-              L[0] += scale*(kd*DM_sample.x*ccd[0]);
-              L[1] += scale*(kd*DM_sample.y*ccd[1]);
-              L[2] += scale*(kd*DM_sample.z*ccd[2]);
+              L[0] += scale*(dlight.color[0]*dot1*dlight.intensity);
+              L[1] += scale*(dlight.color[1]*dot1*dlight.intensity);
+              L[2] += scale*(dlight.color[2]*dot1*dlight.intensity);
              }
           }
        }
 
     // ambient + all light contributions
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+    DM_sample.r = Saturate(DM_sample.r*(ka*ambient_co[0] + kd*L[0]));
+    DM_sample.g = Saturate(DM_sample.g*(ka*ambient_co[1] + kd*L[1]));
+    DM_sample.b = Saturate(DM_sample.b*(ka*ambient_co[2] + kd*L[2]));
    }
 
  // finished
@@ -1858,15 +1843,6 @@ vector4D<float> RG19(const XNAShaderData* input)
  // diffuse sample
  vector4D<float> DM_sample = SampleDiffuse(mesh, DM_index, uv);
 
- // multiply by lightmap data
- if(enable_LM) {
-    auto LM_sample = SampleTexture(mesh, LM_index, uv);
-    DM_sample[0] *= LM_sample.r;
-    DM_sample[1] *= LM_sample.g;
-    DM_sample[2] *= LM_sample.b;
-    DM_sample[3] *= LM_sample.a;
-   }
-
  //
  // LIGHTING
  //
@@ -1884,8 +1860,10 @@ vector4D<float> RG19(const XNAShaderData* input)
     L[1] = 0.0f;
     L[2] = 0.0f;
 
-    // for each light
+    // factors
     float kd = (k_conservation ? 1.0f - ka : 1.0f);
+
+    // for each light
     for(uint32_t i = 0; i < 3; i++)
        {
         // light disabled
@@ -1899,11 +1877,11 @@ vector4D<float> RG19(const XNAShaderData* input)
         wi[2] = -dlight.direction[2];
     
         // interpolate between [1.0f, (N dot -L)]
-        float shading = Saturate(vector3D_scalar_product(N, &wi[0]));
-        shading = 1.0f*(1.0f - dlight.shadow_depth) + shading*dlight.shadow_depth;
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        dot1 = 1.0f - dlight.shadow_depth*(1.0f - dot1); // lerp (shadow depth = 0 = no shading. shadow depth = 1 = normal shading)
 
         // if light intensity is not zero
-        if(shading > 1.0e-6f)
+        if(dot1 > 0.0f)
           {
            // shadow test
            float scale = 1.0f;
@@ -1915,18 +1893,28 @@ vector4D<float> RG19(const XNAShaderData* input)
               };
               scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
              }
+           // sum components
            if(scale) {
-              L[0] += scale*(kd*DM_sample[0]*dlight.color[0]*shading)*dlight.intensity;
-              L[1] += scale*(kd*DM_sample[1]*dlight.color[1]*shading)*dlight.intensity;
-              L[2] += scale*(kd*DM_sample[2]*dlight.color[2]*shading)*dlight.intensity;
+              L[0] += scale*(dlight.color[0]*dot1*dlight.intensity);
+              L[1] += scale*(dlight.color[1]*dot1*dlight.intensity);
+              L[2] += scale*(dlight.color[2]*dot1*dlight.intensity);
              }
           }
        }
 
     // ambient + all light contributions
-    DM_sample.r = Saturate((ka*DM_sample.r*ambient_co[0]) + L[0]);
-    DM_sample.g = Saturate((ka*DM_sample.g*ambient_co[1]) + L[1]);
-    DM_sample.b = Saturate((ka*DM_sample.b*ambient_co[2]) + L[2]);
+    DM_sample.r *= (ka*ambient_co[0] + kd*L[0]);
+    DM_sample.g *= (ka*ambient_co[1] + kd*L[1]);
+    DM_sample.b *= (ka*ambient_co[2] + kd*L[2]);
+   }
+
+ // multiply by lightmap data
+ if(enable_LM) {
+    vector4D<float> LM_sample = SampleTexture(mesh, LM_index, uv);
+    DM_sample.r *= LM_sample.r;
+    DM_sample.g *= LM_sample.g;
+    DM_sample.b *= LM_sample.b;
+    DM_sample.a *= LM_sample.a;
    }
 
  // finished
@@ -3716,25 +3704,29 @@ vector4D<float> RG_thorgear(const XNAShaderData* input)
 
 vector4D<float> RG_thorglow(const XNAShaderData* input)
 {
- // NOTE: It's a little more complicated than this... looks like multiple passes.
- // graphicsDevice.RenderState.SourceBlend = Blend.BlendFactor;
- // graphicsDevice.RenderState.BlendFactor = new Color(2.0f, 2.0f, 2.0f, 1.0f);
- // graphicsDevice.RenderState.DestinationBlend = Blend.InverseSourceAlpha;
- // effectsArmature.CurrentTechnique = effectsArmature.Techniques["ThorGlow1"];
- // foreach (Mesh mesh in model.GetMeshGroup(MeshGroupNames.ThorGlowAll)) {
- //     effectsArmature.Parameters["BoneMatrices"].SetValue(armature.GetBoneMatrices(mesh));
- //     mesh.RenderSinglePass(effectsArmature, "DiffuseTexture");
- // }
- // graphicsDevice.RenderState.SourceBlend = Blend.SourceAlpha;
- // graphicsDevice.RenderState.DestinationBlend = Blend.One;
- // effectsArmature.CurrentTechnique = effectsArmature.Techniques["ThorGlow2"];
- // foreach (Mesh mesh in model.GetMeshGroup(MeshGroupNames.ThorGlowAll)) {
- //     effectsArmature.Parameters["BoneMatrices"].SetValue(armature.GetBoneMatrices(mesh));
- //     mesh.RenderSinglePass(effectsArmature, "DiffuseTexture");
- // }
- // graphicsDevice.RenderState.SourceBlend = Blend.SourceColor;
- // graphicsDevice.RenderState.DestinationBlend = Blend.One;
- // RenderGauntletGlowBillboards(item, isThorGlowGauntletLeftVisible, isThorGlowGauntletRightVisible, false);
+ // NOTE: It's a little more complicated than this... looks like two passes
+ // followed by a billboard pass.
+ // This is pass #1:
+ //     graphicsDevice.RenderState.SourceBlend = Blend.BlendFactor;
+ //     graphicsDevice.RenderState.BlendFactor = new Color(2.0f, 2.0f, 2.0f, 1.0f);
+ //     graphicsDevice.RenderState.DestinationBlend = Blend.InverseSourceAlpha;
+ //     effectsArmature.CurrentTechnique = effectsArmature.Techniques["ThorGlow1"];
+ //     foreach (Mesh mesh in model.GetMeshGroup(MeshGroupNames.ThorGlowAll)) {
+ //         effectsArmature.Parameters["BoneMatrices"].SetValue(armature.GetBoneMatrices(mesh));
+ //         mesh.RenderSinglePass(effectsArmature, "DiffuseTexture");
+ //     }
+ // This is pass #2:
+ //     graphicsDevice.RenderState.SourceBlend = Blend.SourceAlpha;
+ //     graphicsDevice.RenderState.DestinationBlend = Blend.One;
+ //     effectsArmature.CurrentTechnique = effectsArmature.Techniques["ThorGlow2"];
+ //     foreach (Mesh mesh in model.GetMeshGroup(MeshGroupNames.ThorGlowAll)) {
+ //         effectsArmature.Parameters["BoneMatrices"].SetValue(armature.GetBoneMatrices(mesh));
+ //         mesh.RenderSinglePass(effectsArmature, "DiffuseTexture");
+ //     }
+ // And this is the billboard pass:
+ //     graphicsDevice.RenderState.SourceBlend = Blend.SourceColor;
+ //     graphicsDevice.RenderState.DestinationBlend = Blend.One;
+ //     RenderGauntletGlowBillboards(item, isThorGlowGauntletLeftVisible, isThorGlowGauntletRightVisible, false);
 
  // NOTE: Notice that first function gets full color and multiplies it by a strong blue color.
  // Then notice the second function sets the blue color but keeps the alpha channel.

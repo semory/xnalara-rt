@@ -33,7 +33,10 @@ int Run(void)
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\foliage_tree3\\foliage_tree3.mesh")) return 0;
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\foliage_tree4\\foliage_tree4.mesh")) return 0; // UV mapping problem with sampler
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\glass_cage\\glass_cage.mesh")) return 0;
- if(!LoadModel(L"D:\\XNALara\\Models\\original\\glasses\\glasses.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\glasses\\glasses.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\gol_brute_minion\\gol_brute_minion.mesh")) return 0;
+ // if(!LoadModel(L"D:\\XNALara\\Models\\original\\gol_chompy\\gol_chompy.mesh")) return 0;
+ if(!LoadModel(L"D:\\XNALara\\Models\\original\\gol_doppelganger\\gol_doppelganger.mesh")) return 0;
 
  // if(!LoadModel(L"D:\\XNALara\\Models\\original\\lara_bathing_suit\\lara_bathing_suit.mesh")) return 0;
  // if(!LoadModel(L"C:\\Users\\moby_\\Desktop\\xnalara\\models\\Alcina Dimitrescu\\xps.xps"))
@@ -64,11 +67,8 @@ int main()
 {
  // important! initialize classic model information
  InitClassicModels();
- // run application
  auto result = CoInitializeEx(0, COINIT_MULTITHREADED);
  int retval = Run();
  CoUninitialize();
  return retval;
-
- return 0;
 }

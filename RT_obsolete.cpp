@@ -811,54 +811,74 @@ void InitGoLBruteMinion(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh001",      4, 0.20f);
+ info.AddMeshParams(L"mesh002",      4, 0.20f);
+ info.AddMeshParams(L"mesh003left",  4, 0.20f);
+ info.AddMeshParams(L"mesh003right", 4, 0.20f);
+ info.AddMeshParams(L"mesh004",      4, 0.20f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head neck upper");
+ info.AddCameraTarget(L"body upper", L"spine upper");
+ info.AddCameraTarget(L"body lower", L"pelvis");
+ info.AddCameraTarget(L"hand left", L"arm left wrist");
+ info.AddCameraTarget(L"hand right", L"arm right wrist");
+ info.AddCameraTarget(L"knee left", L"leg left knee");
+ info.AddCameraTarget(L"knee right", L"leg right knee");
+ info.AddCameraTarget(L"foot left", L"leg left ankle");
+ info.AddCameraTarget(L"foot right", L"leg right ankle");
 
  // add model information
- modelmap.insert_or_assign(L"GoLBruteMinion", info);
+ modelmap.insert_or_assign(L"gol_brute_minion", info);
 }
 
 void InitGoLChompy(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh001", 4, 0.3f);
+ info.AddMeshParams(L"mesh002", 4, 0.3f);
+ info.AddMeshParams(L"mesh003", 4, 0.3f);
+ info.AddMeshParams(L"mesh004", 4, 0.3f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw 1");
+ info.AddCameraTarget(L"body", L"spine 2", L"spine 3");
+ info.AddCameraTarget(L"tail", L"spine 6");
 
  // add model information
- modelmap.insert_or_assign(L"GoLChompy", info);
+ modelmap.insert_or_assign(L"gol_chompy", info);
 }
 
 void InitGoLDoppelganger(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh003",      2, 0.1f);
+ info.AddMeshParams(L"mesh005",      2, 0.1f);
+ info.AddMeshParams(L"mesh001",      4, 0.3f);
+ info.AddMeshParams(L"mesh002left",  4, 0.1f);
+ info.AddMeshParams(L"mesh002right", 4, 0.1f);
+ info.AddMeshParams(L"mesh004",      4, 0.3f);
+ info.AddMeshParams(L"mesh007",      4, 0.3f);
+ info.AddMeshParams(L"mesh008",      4, 0.1f);
+ info.AddMeshParams(L"mesh009",      4, 0.1f);
+ info.AddMeshParams(L"mesh010",      4, 0.1f);
+ info.AddMeshParams(L"mesh006",      7);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head neck upper");
+ info.AddCameraTarget(L"body upper", L"spine upper");
+ info.AddCameraTarget(L"body lower", L"pelvis");
+ info.AddCameraTarget(L"hand left", L"arm left wrist");
+ info.AddCameraTarget(L"hand right", L"arm right wrist");
+ info.AddCameraTarget(L"knee left", L"leg left knee");
+ info.AddCameraTarget(L"knee right", L"leg right knee");
+ info.AddCameraTarget(L"foot left", L"leg left ankle");
+ info.AddCameraTarget(L"foot right", L"leg right ankle");
 
  // add model information
- modelmap.insert_or_assign(L"GoLDoppelganger", info);
+ modelmap.insert_or_assign(L"gol_doppelganger", info);
 }
 
 void InitGoLFireLizard(void)

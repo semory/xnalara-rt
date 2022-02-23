@@ -170,6 +170,23 @@ void XNAClassicModel::AddCameraTarget(const STDSTRINGW& name, const STDSTRINGW& 
  targets.insert_or_assign(name, XNACameraTarget(b1, b2));
 }
 
+void XNAClassicModel::AddCameraTargetStandardUpper(void)
+{
+ AddCameraTarget(L"head", L"head jaw");
+ AddCameraTarget(L"body upper", L"breast left", L"breast right");
+}
+
+void XNAClassicModel::AddCameraTargetStandardLower(void)
+{
+ AddCameraTarget(L"body lower", L"pelvis");
+ AddCameraTarget(L"hand left", L"arm left wrist");
+ AddCameraTarget(L"hand right", L"arm right wrist");
+ AddCameraTarget(L"knee left", L"leg left knee");
+ AddCameraTarget(L"knee right", L"leg right knee");
+ AddCameraTarget(L"foot left", L"leg left ankle");
+ AddCameraTarget(L"foot right", L"leg right ankle");
+}
+
 #pragma endregion CLASSIC_MODEL
 
 #pragma region CLASSIC_PUBLIC_DEFINITIONS
@@ -1269,13 +1286,7 @@ void InitGoLTotec(void)
  // set camera targets
  info.AddCameraTarget(L"head", L"head neck upper");
  info.AddCameraTarget(L"body upper", L"spine upper");
- info.AddCameraTarget(L"body lower", L"pelvis");
- info.AddCameraTarget(L"hand left", L"arm left wrist");
- info.AddCameraTarget(L"hand right", L"arm right wrist");
- info.AddCameraTarget(L"knee left", L"leg left knee");
- info.AddCameraTarget(L"knee right", L"leg right knee");
- info.AddCameraTarget(L"foot left", L"leg left ankle");
- info.AddCameraTarget(L"foot right", L"leg right ankle");
+ info.AddCameraTargetStandardLower();
 
  // add model information
  modelmap.insert_or_assign(L"gol_totec", info);
@@ -1313,13 +1324,7 @@ void InitGoLXolotl(void)
  // set camera targets
  info.AddCameraTarget(L"head", L"head neck upper");
  info.AddCameraTarget(L"body upper", L"spine upper");
- info.AddCameraTarget(L"body lower", L"pelvis");
- info.AddCameraTarget(L"hand left", L"arm left wrist");
- info.AddCameraTarget(L"hand right", L"arm right wrist");
- info.AddCameraTarget(L"knee left", L"leg left knee");
- info.AddCameraTarget(L"knee right", L"leg right knee");
- info.AddCameraTarget(L"foot left", L"leg left ankle");
- info.AddCameraTarget(L"foot right", L"leg right ankle");
+ info.AddCameraTargetStandardLower();
 
  // add model information
  modelmap.insert_or_assign(L"gol_xolotl", info);
@@ -1329,144 +1334,137 @@ void InitGrapple(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh1", 4, 0.50f);
+ info.AddMeshParams(L"mesh2", 4, 0.30f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Grapple", info);
+ modelmap.insert_or_assign(L"grapple", info);
 }
 
 void InitHairAlister(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"hair1", 5);
+ info.AddMeshParams(L"hair2", 6, 0.10f);
+ info.AddMeshParams(L"hair3", 6, 0.10f);
 
  // set camera targets
+ info.AddCameraTarget(L"hair", L"head neck upper");
 
  // add model information
- modelmap.insert_or_assign(L"HairAlister", info);
+ modelmap.insert_or_assign(L"hair_alister", info);
 }
 
 void InitHairAmanda(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"hair2",      5);
+ info.AddMeshParams(L"hair3",      6, 0.10f);
+ info.AddMeshParams(L"hair2left",  7);
+ info.AddMeshParams(L"hair2right", 7);
 
  // set camera targets
+ info.AddCameraTarget(L"hair", L"head neck upper");
 
  // add model information
- modelmap.insert_or_assign(L"HairAmanda", info);
+ modelmap.insert_or_assign(L"hair_amanda", info);
 }
 
 void InitHairNatla(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"hair1", 2, 0.10f);
+ info.AddMeshParams(L"hair2", 7);
+ info.AddMeshParams(L"hair3", 8, 0.10f);
+ info.AddMeshParams(L"hair4", 8, 0.10f);
+ info.AddMeshParams(L"hair5", 9);
 
  // set camera targets
+ info.AddCameraTarget(L"hair", L"head neck upper");
 
  // add model information
- modelmap.insert_or_assign(L"HairNatla", info);
+ modelmap.insert_or_assign(L"hair_natla", info);
 }
 
 void InitHelicopter(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.25f);
+ info.AddMeshParams(L"part2", 4, 0.25f);
+ info.AddMeshParams(L"part3", 4, 0.25f);
+ info.AddMeshParams(L"part4", 4, 0.25f);
+ info.AddMeshParams(L"part5", 7);
+ info.AddMeshParams(L"part6", 7);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root ground");
 
  // add model information
- modelmap.insert_or_assign(L"Helicopter", info);
+ modelmap.insert_or_assign(L"helicopter", info);
 }
 
 void InitJellyfish(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 7);
+ info.AddMeshParams(L"part2", 7);
+ info.AddMeshParams(L"part3", 7);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Jellyfish", info);
+ modelmap.insert_or_assign(L"jellyfish", info);
 }
 
 void InitKnightThrall(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"Mesh001", 20, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"Mesh002", 20, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"Mesh003", 20, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"Mesh004", 20, 0.10f, 16.0f, 16.0f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw 2");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTargetStandardLower();
 
  // add model information
- modelmap.insert_or_assign(L"KnightThrall", info);
+ modelmap.insert_or_assign(L"knight_thrall", info);
 }
 
 void InitKraken(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part2",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part4",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part5",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part6",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part7",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part8",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part9",  1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part10", 1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part12", 1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part11", 2, 0.20f);
+ info.AddMeshParams(L"part3",  4, 0.20f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"body 1");
 
  // add model information
- modelmap.insert_or_assign(L"Kraken", info);
+ modelmap.insert_or_assign(L"kraken", info);
 }
 
 void InitLara(XNAClassicModel& info)
@@ -1486,15 +1484,8 @@ void InitLara(XNAClassicModel& info)
  info.AddMeshParams(L"thorwireframe",         21, true); // should be separated into the three thorglows
 
  // set camera targets
- info.AddCameraTarget(L"head", L"head jaw");
- info.AddCameraTarget(L"body upper", L"breast left", L"breast right");
- info.AddCameraTarget(L"body lower", L"pelvis");
- info.AddCameraTarget(L"hand left", L"arm left wrist");
- info.AddCameraTarget(L"hand right", L"arm right wrist");
- info.AddCameraTarget(L"knee left", L"leg left knee");
- info.AddCameraTarget(L"knee right", L"leg right knee");
- info.AddCameraTarget(L"foot left", L"leg left ankle");
- info.AddCameraTarget(L"foot right", L"leg right ankle");
+ info.AddCameraTargetStandardUpper();
+ info.AddCameraTargetStandardLower();
 }
 
 void InitLaraBathingSuit(void)
@@ -1632,108 +1623,119 @@ void InitMayanThrall(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh1a", 2, 0.20f);
+ info.AddMeshParams(L"mesh1b", 2, 0.20f);
+ info.AddMeshParams(L"mesh2",  2, 0.20f);
+ info.AddMeshParams(L"mesh5",  2, 0.20f);
+ info.AddMeshParams(L"mesh6",  2, 0.20f);
+ info.AddMeshParams(L"mesh8",  2, 0.20f);
+ info.AddMeshParams(L"mesh3",  4, 0.20f);
+ info.AddMeshParams(L"mesh7",  6, 0.20f);
+ info.AddMeshParams(L"mesh4",  7);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw 2");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTargetStandardLower();
 
  // add model information
- modelmap.insert_or_assign(L"MayanThrall", info);
+ modelmap.insert_or_assign(L"mayan_thrall", info);
 }
 
 void InitMercenary(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"face",     2, 0.10f);
+ info.AddMeshParams(L"belts",    2, 0.10f);
+ info.AddMeshParams(L"tshirt",   2, 0.05f);
+ info.AddMeshParams(L"arms",     2, 0.10f);
+ info.AddMeshParams(L"trousers", 2, 0.10f);
+ info.AddMeshParams(L"boots",    2, 0.10f);
+ info.AddMeshParams(L"hair1",    8, 0.10f);
+ info.AddMeshParams(L"hair2",    8, 0.10f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTargetStandardLower();
 
  // add model information
- modelmap.insert_or_assign(L"Mercenary", info);
+ modelmap.insert_or_assign(L"mercenary", info);
 }
 
 void InitMjolnir(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mjolnir", 5);
 
  // set camera targets
+ info.AddCameraTarget(L"mjolnir", L"mjolnir");
 
  // add model information
- modelmap.insert_or_assign(L"Mjolnir", info);
+ modelmap.insert_or_assign(L"mjolnir", info);
 }
 
 void InitMotorcycle(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh1", 4, 0.50f);
+ info.AddMeshParams(L"mesh2", 4, 0.50f);
+ info.AddMeshParams(L"mesh3", 4, 0.20f);
+ info.AddMeshParams(L"mesh6", 4, 0.20f);
+ info.AddMeshParams(L"mesh4", 5);
+ info.AddMeshParams(L"mesh5", 6, 1.00f);
 
  // set camera targets
+ info.AddCameraTarget(L"body", L"body");
+ info.AddCameraTarget(L"headlight", L"fork front");
+ info.AddCameraTarget(L"wheel front", L"wheel front");
+ info.AddCameraTarget(L"wheel back", L"wheel back");
 
  // add model information
- modelmap.insert_or_assign(L"Motorcycle", info);
+ modelmap.insert_or_assign(L"motorcycle", info);
 }
 
 void InitNagaGreen(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"teeth", 2, 0.20f);
+ info.AddMeshParams(L"body",  2, 0.20f);
+ info.AddMeshParams(L"legs",  2, 0.20f);
+ info.AddMeshParams(L"mouth", 2, 0.20f);
+ info.AddMeshParams(L"eyes",  5);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 2");
+ info.AddCameraTarget(L"pelvis", L"pelvis");
+ info.AddCameraTarget(L"tail", L"tail 4");
 
  // add model information
- modelmap.insert_or_assign(L"NagaGreen", info);
+ modelmap.insert_or_assign(L"naga_green", info);
 }
 
 void InitNagaRed(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"teeth", 2, 0.20f);
+ info.AddMeshParams(L"body",  2, 0.20f);
+ info.AddMeshParams(L"legs",  2, 0.20f);
+ info.AddMeshParams(L"mouth", 2, 0.20f);
+ info.AddMeshParams(L"eyes",  5);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 2");
+ info.AddCameraTarget(L"pelvis", L"pelvis");
+ info.AddCameraTarget(L"tail", L"tail 4");
 
  // add model information
- modelmap.insert_or_assign(L"NagaRed", info);
+ modelmap.insert_or_assign(L"naga_red", info);
 }
 
 void InitNatla(void)
@@ -1742,9 +1744,9 @@ void InitNatla(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1760,9 +1762,9 @@ void InitNatlaNoWings(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1778,9 +1780,9 @@ void InitPanther(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1796,9 +1798,9 @@ void InitPantherThrall(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1814,9 +1816,9 @@ void InitPoacher(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1832,9 +1834,9 @@ void InitPonytail(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1850,9 +1852,9 @@ void InitRecorder(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1879,9 +1881,9 @@ void InitScion2(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1897,9 +1899,9 @@ void InitScion3(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1915,9 +1917,9 @@ void InitSharkBlue(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1933,9 +1935,9 @@ void InitSharkGreenland(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1951,9 +1953,9 @@ void InitShip(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1969,9 +1971,9 @@ void InitShipNatlaRoom(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -1987,9 +1989,9 @@ void InitSkyDomeThailandSea(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2005,9 +2007,9 @@ void InitThailandMirrorStatueLeft(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2023,9 +2025,9 @@ void InitThailandMirrorStatueRight(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2041,9 +2043,9 @@ void InitTiger1(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2059,9 +2061,9 @@ void InitTiger2(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2077,9 +2079,9 @@ void InitVikingThrall(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2095,9 +2097,9 @@ void InitWeaponAKRifle(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2113,9 +2115,9 @@ void InitWeaponAssaultRifle(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2131,9 +2133,9 @@ void InitWeaponGrenade(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2149,9 +2151,9 @@ void InitWeaponHandgun(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2167,9 +2169,9 @@ void InitWeaponShotgun(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2185,9 +2187,9 @@ void InitWeaponSpeargun(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2203,9 +2205,9 @@ void InitWeaponTranquilizer(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2221,9 +2223,9 @@ void InitWeaponUzi(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2239,9 +2241,9 @@ void InitWings(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2257,9 +2259,9 @@ void InitWinston(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2275,9 +2277,9 @@ void InitWraithStone(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2293,9 +2295,9 @@ void InitYacht(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2311,9 +2313,9 @@ void InitYetiThrall(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2329,9 +2331,9 @@ void InitYetiThrallNoChains(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 
@@ -2347,9 +2349,9 @@ void InitZip(void)
  XNAClassicModel info;
  //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
  //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3, 0.10f);
+ //info.AddMeshParams(L"mouth",      3);
  //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5, 0.10f);
+ //info.AddMeshParams(L"hair2",      5);
  //info.AddMeshParams(L"hair2",      6, 0.10f);
  //info.AddMeshParams(L"hair2",      7);
 

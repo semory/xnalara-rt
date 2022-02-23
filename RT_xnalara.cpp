@@ -705,7 +705,7 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      if(!XNAReadVector3D(ifile, bonelist[i].position)) return error(__FILE__, __LINE__);
     }
 
-//
+ //
  // PHASE #3
  // READ MESH LIST
  //

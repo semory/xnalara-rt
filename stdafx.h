@@ -28,6 +28,12 @@
 
 #ifndef RC_INVOKED
 
+inline bool warning(const wchar_t* message)
+{
+ std::wcout << L"WARNING! " << message << std::endl;
+ return false;
+}
+
 inline bool error(const char* message)
 {
  std::cout << message << std::endl;

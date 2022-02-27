@@ -49,6 +49,7 @@ vector4D<float> BlendPixels(void);
 
 // shader functions
 struct XNAShaderData;
+vector4D<float> RGDB(const XNAShaderData* input);
 vector4D<float> RG00(const XNAShaderData* input);
 vector4D<float> RG01(const XNAShaderData* input);
 vector4D<float> RG02(const XNAShaderData* input);

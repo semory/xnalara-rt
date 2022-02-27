@@ -54,6 +54,7 @@ static bool enable_LM = true;
 static bool enable_SM = true;
 static bool enable_EM = true;
 static bool enable_GM = true;
+static bool debug_shader = false;
 
 // depth testing variables
 struct DepthPixel {
@@ -254,12 +255,28 @@ bool GetShadowsState(void)
 
 bool LoadModel(const wchar_t* filename)
 {
+ // validate
+ if(!filename) return error(__FILE__, __LINE__);
+
+ // get file extension
  auto fullpath = std::filesystem::path(filename);
  STDSTRINGW extension = fullpath.extension();
- if(_wcsicmp(extension.c_str(), L".mesh") == 0) {
+ if(!extension.c_str()) return error(__FILE__, __LINE__);
+
+ // OBJ
+ if(_wcsicmp(extension.c_str(), L".obj") == 0) {
+    return error("OBJ format is not supported yet.", __FILE__, __LINE__);
+   }
+ // MESH ASCII
+ else if(_wcsicmp(extension.c_str(), L".mesh.ascii") == 0) {
+    return error("mesh.ascii format is not supported yet.", __FILE__, __LINE__);
+   }
+ // MESH
+ else if(_wcsicmp(extension.c_str(), L".mesh") == 0) {
     if(!LoadXNAMeshBin(filename, &model))
        return error("Failed to load mesh binary.", __FILE__, __LINE__);
    }
+ // XPS
  else if(_wcsicmp(extension.c_str(), L".xps") == 0) {
     if(!LoadXPSMeshBin(filename, &model))
        return error("Failed to load XPS binary.", __FILE__, __LINE__);
@@ -450,7 +467,7 @@ bool Trace(const wchar_t* filename)
                       sd.u = result.u;
                       sd.v = result.v;
                       sd.w = 1.0f - result.u - result.v;
-                      auto color = (*shader)(&sd);
+                      auto color = (debug_shader ? RGDB(&sd) : (*shader)(&sd));
                       UpdateDepthTest(color, result.t, face.mesh_index, bvh.model->meshlist[face.mesh_index].params.alpha);
                      }
                  }
@@ -864,9 +881,12 @@ float ShadowTest(const RTDynamicBVH& bvh, const float* hp, const float* ld)
                u*v1.uv[0][1] + v*v2.uv[0][1] + w*v3.uv[0][1]
               };
 
-              // diffuse sample and compute percentage
-              auto DM_sample = SampleTexture(bvh.model->meshlist[face.mesh_index].textures[0], uv[0], uv[1]);
-              scale *= (1.0f - DM_sample.a);
+              // diffuse alpha channel sample and compute percentage
+              if(!debug_shader) {
+                 auto DM_sample = SampleTexture(bvh.model->meshlist[face.mesh_index].textures[0], uv[0], uv[1]);
+                 scale *= (1.0f - DM_sample.a);
+                }
+              else scale = 0.0f;
              }
          }
        // put children on stack
@@ -1067,6 +1087,130 @@ void NormalMapping3(const XNAShaderData* input, uint32_t BM_index, uint32_t MM_i
  N[1] = N_unperturbed[0]*T[1] + N_unperturbed[1]*B[1] + N_unperturbed[2]*N[1];
  N[2] = N_unperturbed[0]*T[2] + N_unperturbed[1]*B[2] + N_unperturbed[2]*N[2];
  vector3D_normalize(N);
+}
+
+vector4D<float> RGDB(const XNAShaderData* input)
+{
+ // initialize sample to flat color
+ vector4D<float> sample;
+ sample[0] = 0.75f;
+ sample[1] = 0.75f;
+ sample[2] = 0.75f;
+ sample[3] = 1.00f;
+
+ // mesh and triangle vertices
+ const XNAMesh& mesh = input->model->meshlist[input->face->mesh_index];
+ const XNAVertex* v0 = input->v0;
+ const XNAVertex* v1 = input->v1;
+ const XNAVertex* v2 = input->v2;
+
+ // interpolated normal
+ float N[3];
+ float N_norm = InterpolateNormal(input, N);
+
+ // face normal
+ float A[3], B[3];
+ vector3D_sub(A, v1->position, v0->position);
+ vector3D_sub(B, v2->position, v0->position);
+ vector3D_vector_product(N, B, A);
+ N_norm = vector3D_normalize(N);
+
+ // // interpolated UV coordinates
+ // float uv[2][2];
+ // InterpolateUV(input, uv);
+
+ // interpolated color
+ float color[4];
+ InterpolateColor4D(input, color);
+
+ // shading
+ if(enable_shading)
+   {
+    // wo is "from hit-point to camera"
+    vector3D<float> wo;
+    wo[0] = -input->ray->direction[0];
+    wo[1] = -input->ray->direction[1];
+    wo[2] = -input->ray->direction[2];
+
+    vector3D<float> L;
+    L[0] = 0.0f;
+    L[1] = 0.0f;
+    L[2] = 0.0f;
+
+    // factors
+    float kd = (k_conservation ? 1.0f - ka - ks : 1.0f);
+    float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
+    float specular_intensity = mesh.params.params[0];
+
+    // for each light
+    for(uint32_t i = 0; i < 3; i++)
+       {
+        // light disabled
+        const DirectionalLight& dlight = lightlist[i];
+        if(!dlight.enabled) continue;
+    
+        // wi is normalized vector "from hit point to light"
+        vector3D<float> wi;
+        wi[0] = -dlight.direction[0];
+        wi[1] = -dlight.direction[1];
+        wi[2] = -dlight.direction[2];
+    
+        // dot products
+        float dot1 = vector3D_scalar_product(N, &wi[0]); // in XNALara, this is PhongShadingFactor
+        float dot2 = 2.0f*dot1;
+    
+        // if light intensity is not zero
+        if(dot1 > 1.0e-6f)
+          {
+           // shadow test
+           float scale = 1.0f;
+           if(enable_shadows) {
+              // interpolated hitpoint
+              float hitpoint[3] = {
+               input->u*v0->position[0] + input->v*v1->position[0] + input->w*v2->position[0],
+               input->u*v0->position[1] + input->v*v1->position[1] + input->w*v2->position[1],
+               input->u*v0->position[2] + input->v*v1->position[2] + input->w*v2->position[2]
+              };
+              scale = ShadowTest(bvh, &hitpoint[0], &wi[0]);
+             }
+           if(scale)
+             {
+              // wr is normalized reflection vector
+              vector3D<float> wr;
+              wr[0] = -wi[0] + dot2*N[0];
+              wr[1] = -wi[1] + dot2*N[1];
+              wr[2] = -wi[2] + dot2*N[2];
+              vector3D_normalize(&wr[0]);
+           
+              // compute specular component
+              vector3D<float> specular;
+              float reflection_angle = vector3D_scalar_product(&wo[0], &wr[0]);
+              specular[0] = Saturate(std::pow(reflection_angle, specular_power));
+              specular[1] = Saturate(std::pow(reflection_angle, specular_power));
+              specular[2] = Saturate(std::pow(reflection_angle, specular_power));
+           
+              // color component
+              float factor = scale*dot1;
+              float scaleC = kd*factor*dlight.intensity;
+              float scaleS = ks*factor*specular_intensity;
+              float ccd[3] = { dlight.color[0]*scaleC, dlight.color[1]*scaleC, dlight.color[2]*scaleC };
+              float ccs[3] = { dlight.color[0]*scaleS, dlight.color[1]*scaleS, dlight.color[2]*scaleS };
+           
+              // sum components
+              L[0] += (sample[0]*ccd[0] + specular[0]*ccs[0]);
+              L[1] += (sample[1]*ccd[1] + specular[1]*ccs[1]);
+              L[2] += (sample[2]*ccd[2] + specular[2]*ccs[2]);
+             }
+          }
+       }
+
+    // ambient + all light contributions
+    sample[0] = Saturate((ka*sample.r*ambient_co[0]) + L[0]);
+    sample[1] = Saturate((ka*sample.g*ambient_co[1]) + L[1]);
+    sample[2] = Saturate((ka*sample.b*ambient_co[2]) + L[2]);
+   }
+
+ return sample;
 }
 
 vector4D<float> RG00(const XNAShaderData* input)

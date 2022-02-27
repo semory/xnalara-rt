@@ -170,10 +170,16 @@ void XNAClassicModel::AddCameraTarget(const STDSTRINGW& name, const STDSTRINGW& 
  targets.insert_or_assign(name, XNACameraTarget(b1, b2));
 }
 
-void XNAClassicModel::AddCameraTargetStandardUpper(void)
+void XNAClassicModel::AddCameraTargetStandardUpperF(void)
 {
  AddCameraTarget(L"head", L"head jaw");
  AddCameraTarget(L"body upper", L"breast left", L"breast right");
+}
+
+void XNAClassicModel::AddCameraTargetStandardUpperM(void)
+{
+ AddCameraTarget(L"head", L"head jaw");
+ AddCameraTarget(L"body upper", L"spine upper");
 }
 
 void XNAClassicModel::AddCameraTargetStandardLower(void)
@@ -1484,7 +1490,7 @@ void InitLara(XNAClassicModel& info)
  info.AddMeshParams(L"thorwireframe",         21, true); // should be separated into the three thorglows
 
  // set camera targets
- info.AddCameraTargetStandardUpper();
+ info.AddCameraTargetStandardUpperF();
  info.AddCameraTargetStandardLower();
 }
 
@@ -1512,15 +1518,15 @@ void InitLaraBathingSuit(void)
  info.AddMeshParams(L"light",      2, 0.1f);
  info.AddMeshParams(L"mouth",      2, 0.1f);
  info.AddMeshParams(L"ribbon",     2, 0.1f);
- info.AddMeshParams(L"backring",   3, 0.1f);
+ info.AddMeshParams(L"backring",   3);
  info.AddMeshParams(L"eyeirises",  4, 0.1f);
  info.AddMeshParams(L"gear5",      4, 0.1f);
  info.AddMeshParams(L"hair1",      4, 0.1f);
  info.AddMeshParams(L"metal",      4, 0.1f);
  info.AddMeshParams(L"zipper1",    4, 0.1f);
  info.AddMeshParams(L"zipper2",    4, 0.1f);
- info.AddMeshParams(L"eyewhites",  5, 0.1f);
- info.AddMeshParams(L"gear1",      5, 0.1f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"gear1",      5);
  info.AddMeshParams(L"hair2",      6, 0.1f);
  info.AddMeshParams(L"eyebrows",   7);
  info.AddMeshParams(L"eyelashes",  7);
@@ -1533,90 +1539,843 @@ void InitLaraBathingSuit(void)
 
 void InitLaraBathingSuitNoGear(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"collar",     1, 0.1f, 12.0f, 12.0f);
+ info.AddMeshParams(L"suit",       1, 0.3f, 24.0f, 48.0f);
+ info.AddMeshParams(L"arms",       2, 0.1f);
+ info.AddMeshParams(L"body",       2, 0.1f);
+ info.AddMeshParams(L"eyeducts",   2, 0.1f);
+ info.AddMeshParams(L"face",       2, 0.1f);
+ info.AddMeshParams(L"feet",       2, 0.1f);
+ info.AddMeshParams(L"hands",      2, 0.1f);
+ info.AddMeshParams(L"legs",       2, 0.1f);
+ info.AddMeshParams(L"mouth",      2, 0.1f);
+ info.AddMeshParams(L"ribbon",     2, 0.1f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.1f);
+ info.AddMeshParams(L"hair1",      4, 0.1f);
+ info.AddMeshParams(L"zipper1",    4, 0.1f);
+ info.AddMeshParams(L"zipper2",    4, 0.1f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"hair2",      6, 0.1f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_bathing_suit_nogear", info);
 }
 
 void InitLaraCasual(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 20.0f);
+ info.AddMeshParams(L"boots1",     1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"sweater",    1, 0.03f, 12.0f, 30.0f);
+ info.AddMeshParams(L"trousers",   1, 0.05f, 8.0f, 8.0f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"hands",      2, 0.10f);
+ info.AddMeshParams(L"light1",     2, 0.10f);
+ info.AddMeshParams(L"light2",     2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"neck",       2, 0.10f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"boots2",     4, 0.60f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.60f);
+ info.AddMeshParams(L"zipper1",    4, 0.10f);
+ info.AddMeshParams(L"zipper2",    4, 0.10f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_casual", info);
 }
 
 void InitLaraDLCBikiniBlackWhite(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh013", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh015", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh022", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh023", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh024", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh001", 2, 0.1f);
+ info.AddMeshParams(L"mesh008", 2, 0.1f);
+ info.AddMeshParams(L"mesh010", 2, 0.1f);
+ info.AddMeshParams(L"mesh017", 2, 0.1f);
+ info.AddMeshParams(L"mesh018", 2, 0.1f);
+ info.AddMeshParams(L"mesh019", 2, 0.1f);
+ info.AddMeshParams(L"mesh020", 2, 0.1f);
+ info.AddMeshParams(L"mesh021", 2, 0.1f);
+ info.AddMeshParams(L"mesh014", 3);
+ info.AddMeshParams(L"mesh009", 4, 0.1f);
+ info.AddMeshParams(L"mesh012", 4, 0.6f);
+ info.AddMeshParams(L"mesh004", 5);
+ info.AddMeshParams(L"mesh005", 5);
+ info.AddMeshParams(L"mesh016", 5);
+ info.AddMeshParams(L"mesh011", 6, 0.1f);
+ info.AddMeshParams(L"mesh003", 7);
+ info.AddMeshParams(L"mesh006", 7);
+ info.AddMeshParams(L"mesh007", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_bikini_blackwhite", info);
 }
 
 void InitLaraDLCBikiniBlue(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh013", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh015", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh022", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh023", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh027", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh001", 2, 0.1f);
+ info.AddMeshParams(L"mesh008", 2, 0.1f);
+ info.AddMeshParams(L"mesh010", 2, 0.1f);
+ info.AddMeshParams(L"mesh017", 2, 0.1f);
+ info.AddMeshParams(L"mesh018", 2, 0.1f);
+ info.AddMeshParams(L"mesh019", 2, 0.1f);
+ info.AddMeshParams(L"mesh020", 2, 0.1f);
+ info.AddMeshParams(L"mesh021", 2, 0.1f);
+ info.AddMeshParams(L"mesh024", 2, 0.1f);
+ info.AddMeshParams(L"mesh025", 2, 0.1f);
+ info.AddMeshParams(L"mesh014", 3);
+ info.AddMeshParams(L"mesh009", 4, 0.1f);
+ info.AddMeshParams(L"mesh012", 4, 0.6f);
+ info.AddMeshParams(L"mesh004", 5);
+ info.AddMeshParams(L"mesh005", 5);
+ info.AddMeshParams(L"mesh016", 5);
+ info.AddMeshParams(L"mesh011", 6, 0.1f);
+ info.AddMeshParams(L"mesh003", 7);
+ info.AddMeshParams(L"mesh006", 7);
+ info.AddMeshParams(L"mesh007", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_bikini_blue", info);
 }
 
 void InitLaraDLCBikiniCamo(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh013", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh015", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh022", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh023", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh025", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh001", 2, 0.1f);
+ info.AddMeshParams(L"mesh008", 2, 0.1f);
+ info.AddMeshParams(L"mesh010", 2, 0.1f);
+ info.AddMeshParams(L"mesh017", 2, 0.1f);
+ info.AddMeshParams(L"mesh018", 2, 0.1f);
+ info.AddMeshParams(L"mesh019", 2, 0.1f);
+ info.AddMeshParams(L"mesh020", 2, 0.1f);
+ info.AddMeshParams(L"mesh021", 2, 0.1f);
+ info.AddMeshParams(L"mesh014", 3);
+ info.AddMeshParams(L"mesh009", 4, 0.1f);
+ info.AddMeshParams(L"mesh012", 4, 0.6f);
+ info.AddMeshParams(L"mesh004", 5);
+ info.AddMeshParams(L"mesh005", 5);
+ info.AddMeshParams(L"mesh016", 5);
+ info.AddMeshParams(L"mesh011", 6, 0.1f);
+ info.AddMeshParams(L"mesh003", 7);
+ info.AddMeshParams(L"mesh006", 7);
+ info.AddMeshParams(L"mesh007", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_bikini_camo", info);
 }
 
 void InitLaraDLCBikiniYellow(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh013", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh015", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh022", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh023", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh024", 1, 0.6f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh001", 2, 0.1f);
+ info.AddMeshParams(L"mesh008", 2, 0.1f);
+ info.AddMeshParams(L"mesh010", 2, 0.1f);
+ info.AddMeshParams(L"mesh017", 2, 0.1f);
+ info.AddMeshParams(L"mesh018", 2, 0.1f);
+ info.AddMeshParams(L"mesh019", 2, 0.1f);
+ info.AddMeshParams(L"mesh020", 2, 0.1f);
+ info.AddMeshParams(L"mesh021", 2, 0.1f);
+ info.AddMeshParams(L"mesh014", 3);
+ info.AddMeshParams(L"mesh009", 4, 0.1f);
+ info.AddMeshParams(L"mesh012", 4, 0.6f);
+ info.AddMeshParams(L"mesh004", 5);
+ info.AddMeshParams(L"mesh005", 5);
+ info.AddMeshParams(L"mesh016", 5);
+ info.AddMeshParams(L"mesh011", 6, 0.1f);
+ info.AddMeshParams(L"mesh003", 7);
+ info.AddMeshParams(L"mesh006", 7);
+ info.AddMeshParams(L"mesh007", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_bikini_yellow", info);
 }
 
 void InitLaraDLCCasualExplorer(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh003", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh006", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh007", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh011", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh016", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh017", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh018", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh022", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh024", 1, 0.1f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh002", 2, 0.10f);
+ info.AddMeshParams(L"mesh005", 2, 0.10f);
+ info.AddMeshParams(L"mesh009", 2, 0.10f);
+ info.AddMeshParams(L"mesh013", 2, 0.10f);
+ info.AddMeshParams(L"mesh014", 2, 0.10f);
+ info.AddMeshParams(L"mesh015", 2, 0.10f);
+ info.AddMeshParams(L"mesh023", 3);
+ info.AddMeshParams(L"mesh010", 4, 0.10f);
+ info.AddMeshParams(L"mesh012", 4, 0.10f);
+ info.AddMeshParams(L"mesh020", 4, 0.60f);
+ info.AddMeshParams(L"mesh021", 4, 0.60f);
+ info.AddMeshParams(L"mesh001", 5);
+ info.AddMeshParams(L"mesh004", 5);
+ info.AddMeshParams(L"mesh026", 5);
+ info.AddMeshParams(L"mesh027", 5);
+ info.AddMeshParams(L"mesh008", 6, 0.10f);
+ info.AddMeshParams(L"mesh025", 7);
+ info.AddMeshParams(L"mesh029", 7);
+ info.AddMeshParams(L"mesh030", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_casual_explorer", info);
 }
 
 void InitLaraDLCClassic(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh001", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh004", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh007", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh009", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh010", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh011", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh018", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh002", 2, 0.10f);
+ info.AddMeshParams(L"mesh005", 2, 0.10f);
+ info.AddMeshParams(L"mesh013", 2, 0.10f);
+ info.AddMeshParams(L"mesh015", 2, 0.10f);
+ info.AddMeshParams(L"mesh016", 2, 0.10f);
+ info.AddMeshParams(L"mesh017", 2, 0.10f);
+ info.AddMeshParams(L"mesh020", 2, 0.10f);
+ info.AddMeshParams(L"mesh008", 4, 0.60f);
+ info.AddMeshParams(L"mesh012", 4, 0.10f);
+ info.AddMeshParams(L"mesh019", 5);
+ info.AddMeshParams(L"mesh023", 5);
+ info.AddMeshParams(L"mesh014", 6, 0.10f);
+ info.AddMeshParams(L"mesh006", 7);
+ info.AddMeshParams(L"mesh021", 7);
+ info.AddMeshParams(L"mesh024", 7);
+
+ // add model information (two models)
+ modelmap.insert_or_assign(L"lara_dlc_classic_fixed", info);
 }
 
 void InitLaraDLCDesignerFashionWinner(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh014", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh016", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh017", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh018", 1, 0.10f, 20.0f, 24.0f);
+ info.AddMeshParams(L"mesh024", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh025", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh028", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh029", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh030", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh032", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh001", 2, 0.10f);
+ info.AddMeshParams(L"mesh008", 2, 0.10f);
+ info.AddMeshParams(L"mesh011", 2, 0.10f);
+ info.AddMeshParams(L"mesh019", 2, 0.10f);
+ info.AddMeshParams(L"mesh020", 2, 0.10f);
+ info.AddMeshParams(L"mesh022", 2, 0.10f);
+ info.AddMeshParams(L"mesh023", 2, 0.10f);
+ info.AddMeshParams(L"mesh015", 3);
+ info.AddMeshParams(L"mesh009", 4, 0.60f);
+ info.AddMeshParams(L"mesh010", 4, 0.10f);
+ info.AddMeshParams(L"mesh013", 4, 0.60f);
+ info.AddMeshParams(L"mesh021", 4, 0.10f);
+ info.AddMeshParams(L"mesh027", 4, 0.10f);
+ info.AddMeshParams(L"mesh033", 4, 0.10f);
+ info.AddMeshParams(L"mesh004", 5);
+ info.AddMeshParams(L"mesh005", 5);
+ info.AddMeshParams(L"mesh031", 5);
+ info.AddMeshParams(L"mesh012", 6, 0.10f);
+ info.AddMeshParams(L"mesh003", 7);
+ info.AddMeshParams(L"mesh006", 7);
+ info.AddMeshParams(L"mesh007", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_designer_fashion_winner", info);
 }
 
 void InitLaraDLCDesignerPeoplesChoice(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh018", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh020", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh023", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh025", 1, 0.30f, 24.0f, 24.0f);
+ info.AddMeshParams(L"mesh026", 1, 0.30f, 24.0f, 24.0f);
+ info.AddMeshParams(L"mesh027", 1, 0.30f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh003", 2, 0.10f);
+ info.AddMeshParams(L"mesh010", 2, 0.10f);
+ info.AddMeshParams(L"mesh012", 2, 0.10f);
+ info.AddMeshParams(L"mesh014", 2, 0.10f);
+ info.AddMeshParams(L"mesh015", 2, 0.10f);
+ info.AddMeshParams(L"mesh016", 2, 0.10f);
+ info.AddMeshParams(L"mesh019", 2, 0.10f);
+ info.AddMeshParams(L"mesh024", 3);
+ info.AddMeshParams(L"mesh007", 4, 0.10f);
+ info.AddMeshParams(L"mesh008", 4, 0.10f);
+ info.AddMeshParams(L"mesh009", 4, 0.10f);
+ info.AddMeshParams(L"mesh022", 4, 0.60f);
+ info.AddMeshParams(L"mesh002", 5);
+ info.AddMeshParams(L"mesh006", 5);
+ info.AddMeshParams(L"mesh017", 5);
+ info.AddMeshParams(L"mesh011", 6, 0.10f);
+ info.AddMeshParams(L"mesh001", 7);
+ info.AddMeshParams(L"mesh004", 7);
+ info.AddMeshParams(L"mesh013", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_designer_peoples_choice", info);
 }
 
 void InitLaraDLCDrySuitRed(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"arms",       1, 0.30f, 20.0f, 20.0f);
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 10.0f);
+ info.AddMeshParams(L"boots1",     1, 0.10f,  8.0f, 16.0f);
+ info.AddMeshParams(L"boots2",     1, 0.10f,  8.0f,  8.0f);
+ info.AddMeshParams(L"gear2",      1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear3",      1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear6",      1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"legs",       1, 0.30f, 20.0f, 40.0f);
+ info.AddMeshParams(L"suit",       1, 0.30f, 24.0f, 48.0f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"hands",      2, 0.10f);
+ info.AddMeshParams(L"light",      2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"neck",       2, 0.10f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"gear5",      4, 0.10f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.20f);
+ info.AddMeshParams(L"zipper",     4, 0.10f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"gear1",      5);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+ info.AddMeshParams(L"gear4",      7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_drysuit_red", info);
 }
 
 void InitLaraDLCJungleShortsGrey(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh008", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh009", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh010", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh017", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh021", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh022", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh024", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh001", 2, 0.10f);
+ info.AddMeshParams(L"mesh004", 2, 0.10f);
+ info.AddMeshParams(L"mesh013", 2, 0.10f);
+ info.AddMeshParams(L"mesh015", 2, 0.10f);
+ info.AddMeshParams(L"mesh019", 2, 0.10f);
+ info.AddMeshParams(L"mesh020", 2, 0.10f);
+ info.AddMeshParams(L"mesh023", 2, 0.10f);
+ info.AddMeshParams(L"mesh018", 3);
+ info.AddMeshParams(L"mesh011", 4, 0.60f);
+ info.AddMeshParams(L"mesh014", 4, 0.10f);
+ info.AddMeshParams(L"mesh002", 5);
+ info.AddMeshParams(L"mesh003", 5);
+ info.AddMeshParams(L"mesh026", 5);
+ info.AddMeshParams(L"mesh016", 6, 0.10f);
+ info.AddMeshParams(L"mesh005", 7);
+ info.AddMeshParams(L"mesh007", 7);
+ info.AddMeshParams(L"mesh012", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_jungle_shorts_grey", info);
 }
 
 void InitLaraDLCLegend(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"mesh008", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh009", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh016", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh018", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh019", 1, 0.01f, 24.0f, 32.0f);
+ info.AddMeshParams(L"mesh020", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh021", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh025", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh028", 1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"mesh001", 2, 0.10f);
+ info.AddMeshParams(L"mesh004", 2, 0.10f);
+ info.AddMeshParams(L"mesh011", 2, 0.10f);
+ info.AddMeshParams(L"mesh014", 2, 0.10f);
+ info.AddMeshParams(L"mesh022", 2, 0.10f);
+ info.AddMeshParams(L"mesh023", 2, 0.10f);
+ info.AddMeshParams(L"mesh024", 2, 0.10f);
+ info.AddMeshParams(L"mesh017", 3);
+ info.AddMeshParams(L"mesh010", 4, 0.60f);
+ info.AddMeshParams(L"mesh013", 4, 0.10f);
+ info.AddMeshParams(L"mesh002", 5);
+ info.AddMeshParams(L"mesh003", 5);
+ info.AddMeshParams(L"mesh027", 5);
+ info.AddMeshParams(L"mesh015", 6, 0.10f);
+ info.AddMeshParams(L"mesh005", 7);
+ info.AddMeshParams(L"mesh007", 7);
+ info.AddMeshParams(L"mesh012", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_legend_fixed", info);
 }
 
 void InitLaraDLCWetSuitBlue(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"arms",         1, 0.30f, 20.0f, 20.0f);
+ info.AddMeshParams(L"backpack",     1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"belts",        1, 0.10f, 10.0f, 20.0f);
+ info.AddMeshParams(L"collar",       1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear2",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear3",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear6",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"suit",         1, 0.30f, 24.0f, 48.0f);
+ info.AddMeshParams(L"suitstripes1", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"suitstripes2", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"body",         2, 0.10f);
+ info.AddMeshParams(L"eyeducts",     2, 0.10f);
+ info.AddMeshParams(L"face",         2, 0.10f);
+ info.AddMeshParams(L"feet",         2, 0.10f);
+ info.AddMeshParams(L"hands",        2, 0.10f);
+ info.AddMeshParams(L"legs",         2, 0.10f);
+ info.AddMeshParams(L"light",        2, 0.10f);
+ info.AddMeshParams(L"mouth",        2, 0.10f);
+ info.AddMeshParams(L"ribbon",       2, 0.10f);
+ info.AddMeshParams(L"backring",     3);
+ info.AddMeshParams(L"eyeirises",    4, 0.10f);
+ info.AddMeshParams(L"gear5",        4, 0.10f);
+ info.AddMeshParams(L"hair1",        4, 0.10f);
+ info.AddMeshParams(L"metal",        4, 0.20f);
+ info.AddMeshParams(L"zipper1",      4, 0.10f);
+ info.AddMeshParams(L"zipper2",      4, 0.10f);
+ info.AddMeshParams(L"eyewhites",    5);
+ info.AddMeshParams(L"gear1",        5);
+ info.AddMeshParams(L"hair2",        6, 0.10f);
+ info.AddMeshParams(L"eyebrows",     7);
+ info.AddMeshParams(L"eyelashes",    7);
+ info.AddMeshParams(L"eyeshading",   7);
+ info.AddMeshParams(L"gear4",        7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_dlc_wetsuit_blue", info);
 }
 
 void InitLaraDrySuit(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"arms",       1, 0.30f, 20.0f, 20.0f);
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 10.0f);
+ info.AddMeshParams(L"boots1",     1, 0.10f,  8.0f, 16.0f);
+ info.AddMeshParams(L"boots2",     1, 0.10f,  8.0f,  8.0f);
+ info.AddMeshParams(L"gear2",      1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear3",      1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear6",      1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"legs",       1, 0.30f, 20.0f, 40.0f);
+ info.AddMeshParams(L"suit",       1, 0.30f, 24.0f, 48.0f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"hands",      2, 0.10f);
+ info.AddMeshParams(L"light",      2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"neck",       2, 0.10f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"gear5",      4, 0.10f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.20f);
+ info.AddMeshParams(L"zipper",     4, 0.10f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"gear1",      5);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+ info.AddMeshParams(L"gear4",      7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_drysuit", info);
 }
 
 void InitLaraJungleHeavy(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 20.0f);
+ info.AddMeshParams(L"boots",      1, 0.10f, 15.0f, 30.0f);
+ info.AddMeshParams(L"gloves",     1, 0.10f,  5.0f,  7.0f);
+ info.AddMeshParams(L"jacket",     1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"trousers",   1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"body",       2, 0.10f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"fingers",    2, 0.10f);
+ info.AddMeshParams(L"light1",     2, 0.10f);
+ info.AddMeshParams(L"light2",     2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.60f);
+ info.AddMeshParams(L"zipper1",    4, 0.10f);
+ info.AddMeshParams(L"zipper2",    4, 0.10f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_jungle_heavy", info);
 }
 
 void InitLaraJunglePants(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 20.0f);
+ info.AddMeshParams(L"boots",      1, 0.10f, 15.0f, 30.0f);
+ info.AddMeshParams(L"gloves",     1, 0.10f,  5.0f,  7.0f);
+ info.AddMeshParams(L"trousers",   1, 0.10f, 24.0f, 24.0f);
+ info.AddMeshParams(L"tshirt",     1, 0.10f, 24.0f, 48.0f);
+ info.AddMeshParams(L"body",       2, 0.10f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"fingers",    2, 0.10f);
+ info.AddMeshParams(L"light1",     2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"xxxx",       3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.60f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_jungle_pants", info);
 }
 
 void InitLaraJungleShorts(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 20.0f);
+ info.AddMeshParams(L"boots",      1, 0.10f, 15.0f, 30.0f);
+ info.AddMeshParams(L"gloves",     1, 0.10f,  5.0f,  7.0f);
+ info.AddMeshParams(L"shorts",     1, 0.10f, 24.0f, 36.0f);
+ info.AddMeshParams(L"tshirt",     1, 0.10f, 24.0f, 48.0f);
+ info.AddMeshParams(L"body",       2, 0.10f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"fingers",    2, 0.10f);
+ info.AddMeshParams(L"light1",     2, 0.10f);
+ info.AddMeshParams(L"light2",     2, 0.10f);
+ info.AddMeshParams(L"legs",       2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.60f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_jungle_shorts", info);
 }
 
 void InitLaraSnowHeavy(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 20.0f);
+ info.AddMeshParams(L"boots1",     1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"boots3",     1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"gloves",     1, 0.10f, 20.0f, 20.0f);
+ info.AddMeshParams(L"jacket",     1, 0.25f, 32.0f, 32.0f);
+ info.AddMeshParams(L"sleeves",    1, 0.25f, 20.0f, 20.0f);
+ info.AddMeshParams(L"trousers",   1, 0.05f, 16.0f, 16.0f);
+ info.AddMeshParams(L"body",       2, 0.10f);
+ info.AddMeshParams(L"boots2",     2, 0.60f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"light1",     2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"sweater",    2, 0.10f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"light2",     4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.60f);
+ info.AddMeshParams(L"zipper1",    4, 0.10f);
+ info.AddMeshParams(L"zipper2",    4, 0.10f);
+ info.AddMeshParams(L"boots4",     5);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"fur1",       5);
+ info.AddMeshParams(L"fur2",       6, 0.10f);
+ info.AddMeshParams(L"fur3",       6, 0.10f);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+ info.AddMeshParams(L"boots5",     9);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_snow_heavy", info);
 }
 
 void InitLaraSnowLight(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"backpack",   1, 0.10f, 12.0f, 16.0f);
+ info.AddMeshParams(L"belts",      1, 0.10f, 10.0f, 20.0f);
+ info.AddMeshParams(L"boots1",     1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"boots3",     1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"gloves",     1, 0.10f, 20.0f, 20.0f);
+ info.AddMeshParams(L"jacket",     1, 0.25f, 32.0f, 32.0f);
+ info.AddMeshParams(L"sleeves",    1, 0.25f, 20.0f, 20.0f);
+ info.AddMeshParams(L"trousers",   1, 0.05f, 16.0f, 16.0f);
+ info.AddMeshParams(L"eyeducts",   2, 0.10f);
+ info.AddMeshParams(L"light2",     2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"body",       2, 0.10f);
+ info.AddMeshParams(L"boots2",     2, 0.60f);
+ info.AddMeshParams(L"ribbon",     2, 0.10f);
+ info.AddMeshParams(L"backring",   3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"light1",     4, 0.10f);
+ info.AddMeshParams(L"zipper1",    4, 0.10f);
+ info.AddMeshParams(L"zipper2",    4, 0.10f);
+ info.AddMeshParams(L"hair1",      4, 0.10f);
+ info.AddMeshParams(L"metal",      4, 0.60f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"boots4",     5);
+ info.AddMeshParams(L"hair2",      6, 0.10f);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
+ info.AddMeshParams(L"boots5",     9);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_snow_light", info);
 }
 
 void InitLaraWetSuit(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"arms",         1, 0.30f, 20.0f, 20.0f);
+ info.AddMeshParams(L"backpack",     1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"belts",        1, 0.10f, 10.0f, 10.0f);
+ info.AddMeshParams(L"collar",       1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear2",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear3",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gear6",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"suit",         1, 0.30f, 24.0f, 48.0f);
+ info.AddMeshParams(L"suitstripes1", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"suitstripes2", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"body",         2, 0.10f);
+ info.AddMeshParams(L"eyeducts",     2, 0.10f);
+ info.AddMeshParams(L"face",         2, 0.10f);
+ info.AddMeshParams(L"feet",         2, 0.10f);
+ info.AddMeshParams(L"hands",        2, 0.10f);
+ info.AddMeshParams(L"legs",         2, 0.10f);
+ info.AddMeshParams(L"light",        2, 0.10f);
+ info.AddMeshParams(L"mouth",        2, 0.10f);
+ info.AddMeshParams(L"ribbon",       2, 0.10f);
+ info.AddMeshParams(L"backring",     3);
+ info.AddMeshParams(L"eyeirises",    4, 0.10f);
+ info.AddMeshParams(L"gear5",        4, 0.10f);
+ info.AddMeshParams(L"hair1",        4, 0.10f);
+ info.AddMeshParams(L"metal",        4, 0.20f);
+ info.AddMeshParams(L"zipper1",      4, 0.10f);
+ info.AddMeshParams(L"zipper2",      4, 0.10f);
+ info.AddMeshParams(L"eyewhites",    5);
+ info.AddMeshParams(L"gear1",        5);
+ info.AddMeshParams(L"hair2",        6, 0.10f);
+ info.AddMeshParams(L"eyebrows",     7);
+ info.AddMeshParams(L"eyelashes",    7);
+ info.AddMeshParams(L"eyeshading",   7);
+ info.AddMeshParams(L"gear4",        7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_wetsuit", info);
 }
 
 void InitLaraWetSuitNoGear(void)
 {
+ // base mesh properties
+ XNAClassicModel info;
+ InitLara(info);
+
+ // mesh properties
+ info.AddMeshParams(L"arms",         1, 0.30f, 20.0f, 20.0f);
+ info.AddMeshParams(L"collar",       1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"suit",         1, 0.30f, 24.0f, 48.0f);
+ info.AddMeshParams(L"suitstripes1", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"suitstripes2", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"body",         2, 0.10f);
+ info.AddMeshParams(L"eyeducts",     2, 0.10f);
+ info.AddMeshParams(L"face",         2, 0.10f);
+ info.AddMeshParams(L"feet",         2, 0.10f);
+ info.AddMeshParams(L"hands",        2, 0.10f);
+ info.AddMeshParams(L"legs",         2, 0.10f);
+ info.AddMeshParams(L"mouth",        2, 0.10f);
+ info.AddMeshParams(L"ribbon",       2, 0.10f);
+ info.AddMeshParams(L"eyeirises",    4, 0.10f);
+ info.AddMeshParams(L"hair1",        4, 0.10f);
+ info.AddMeshParams(L"zipper1",      4, 0.10f);
+ info.AddMeshParams(L"zipper2",      4, 0.10f);
+ info.AddMeshParams(L"eyewhites",    5);
+ info.AddMeshParams(L"hair2",        6, 0.10f);
+ info.AddMeshParams(L"eyebrows",     7);
+ info.AddMeshParams(L"eyelashes",    7);
+ info.AddMeshParams(L"eyeshading",   7);
+
+ // add model information
+ modelmap.insert_or_assign(L"lara_wetsuit_nogear", info);
 }
 
 void InitMayanThrall(void)
@@ -1742,623 +2501,776 @@ void InitNatla(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"arms",           1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"detail3",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"jacket",         1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"trousers",       1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"wingbonesleft",  1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"wingbonesright", 1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"wingleft",       1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"wingright",      1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"detail1",        2, 0.10f);
+ info.AddMeshParams(L"detail2",        2, 0.10f);
+ info.AddMeshParams(L"detail4",        2, 0.10f);
+ info.AddMeshParams(L"detail5",        2, 0.10f);
+ info.AddMeshParams(L"face",           2, 0.10f);
+ info.AddMeshParams(L"feet",           2, 0.10f);
+ info.AddMeshParams(L"hair1",          2, 0.10f);
+ info.AddMeshParams(L"handleft",       2, 0.10f);
+ info.AddMeshParams(L"handright",      2, 0.10f);
+ info.AddMeshParams(L"mouth",          4, 0.10f);
+ info.AddMeshParams(L"zipper1",        4, 0.10f);
+ info.AddMeshParams(L"zipper2",        4, 0.10f);
+ info.AddMeshParams(L"eyes",           5);
+ info.AddMeshParams(L"label",          5);
+ info.AddMeshParams(L"eyebrows",       7);
+ info.AddMeshParams(L"eyelashes",      7);
+ info.AddMeshParams(L"eyeshading",     7);
+ info.AddMeshParams(L"hair2",          7);
+ info.AddMeshParams(L"hair3",          8, 0.10f);
+ info.AddMeshParams(L"hair4",          8, 0.10f);
+ info.AddMeshParams(L"hair5",          9);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body upper", L"unused007");
+ info.AddCameraTargetStandardLower();
+ info.AddCameraTarget(L"wing left", L"wing left 7c");
+ info.AddCameraTarget(L"wing right", L"wing right 7c");
 
  // add model information
- modelmap.insert_or_assign(L"Natla", info);
+ modelmap.insert_or_assign(L"natla", info);
 }
 
 void InitNatlaNoWings(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"arms",           1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"detail3",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"jacket",         1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"trousers",       1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"detail1",        2, 0.10f);
+ info.AddMeshParams(L"detail2",        2, 0.10f);
+ info.AddMeshParams(L"detail4",        2, 0.10f);
+ info.AddMeshParams(L"detail5",        2, 0.10f);
+ info.AddMeshParams(L"face",           2, 0.10f);
+ info.AddMeshParams(L"feet",           2, 0.10f);
+ info.AddMeshParams(L"hair1",          2, 0.10f);
+ info.AddMeshParams(L"handleft",       2, 0.10f);
+ info.AddMeshParams(L"handright",      2, 0.10f);
+ info.AddMeshParams(L"mouth",          4, 0.10f);
+ info.AddMeshParams(L"zipper1",        4, 0.10f);
+ info.AddMeshParams(L"zipper2",        4, 0.10f);
+ info.AddMeshParams(L"eyes",           5);
+ info.AddMeshParams(L"label",          5);
+ info.AddMeshParams(L"eyebrows",       7);
+ info.AddMeshParams(L"eyelashes",      7);
+ info.AddMeshParams(L"eyeshading",     7);
+ info.AddMeshParams(L"hair2",          7);
+ info.AddMeshParams(L"hair3",          8, 0.10f);
+ info.AddMeshParams(L"hair4",          8, 0.10f);
+ info.AddMeshParams(L"hair5",          9);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body upper", L"unused007");
+ info.AddCameraTargetStandardLower();
 
  // add model information
- modelmap.insert_or_assign(L"NatlaNoWings", info);
+ modelmap.insert_or_assign(L"natla_nowings", info);
 }
 
 void InitPanther(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part4", 1, 0.15f, 32.0f, 32.0f);
+ info.AddMeshParams(L"part2", 2, 0.15f);
+ info.AddMeshParams(L"part3", 2, 0.15f);
+ info.AddMeshParams(L"part1", 4, 0.15f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 2");
+ info.AddCameraTarget(L"pelvis", L"pelvis");
+ info.AddCameraTarget(L"tail", L"tail 3");
 
  // add model information
- modelmap.insert_or_assign(L"Panther", info);
+ modelmap.insert_or_assign(L"panther", info);
 }
 
 void InitPantherThrall(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 1, 0.20f, 8.0f, 8.0f);
+ info.AddMeshParams(L"part3", 1, 0.20f, 8.0f, 8.0f);
+ info.AddMeshParams(L"part2", 6, 0.20f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 2");
+ info.AddCameraTarget(L"pelvis", L"pelvis");
+ info.AddCameraTarget(L"tail", L"tail 3");
 
  // add model information
- modelmap.insert_or_assign(L"PantherThrall", info);
+ modelmap.insert_or_assign(L"panther_thrall", info);
 }
 
 void InitPoacher(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"clothes1",    1, 0.05f,  8.0f,  8.0f);
+ info.AddMeshParams(L"gear",        1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"belt2",       1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"clothes3",    1, 0.05f,  8.0f,  8.0f);
+ info.AddMeshParams(L"hat",         1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"neckerchief", 1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"gloves",      1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"trousers",    1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"clothleft",   1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"clothright",  1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"body",        2, 0.10f);
+ info.AddMeshParams(L"metal",       2, 0.40f);
+ info.AddMeshParams(L"zipper",      2, 0.10f);
+ info.AddMeshParams(L"belt1",       2, 0.10f);
+ info.AddMeshParams(L"hair1",       5);
+ info.AddMeshParams(L"eyes",        5);
+ info.AddMeshParams(L"clothes2",    5);
+ info.AddMeshParams(L"hair2",       7);
+ info.AddMeshParams(L"eyebrows",    7);
+ info.AddMeshParams(L"eyelashes",   7);
+ info.AddMeshParams(L"beard",       7);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw 2");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTarget(L"body lower", L"pelvis");
+ info.AddCameraTarget(L"hand left", L"arm left wrist");
+ info.AddCameraTarget(L"hand right", L"arm right wrist");
+ info.AddCameraTarget(L"knee left", L"leg left knee");
+ info.AddCameraTarget(L"knee right", L"leg right knee");
+ info.AddCameraTarget(L"foot left", L"leg left ankle");
+ info.AddCameraTarget(L"foot right", L"leg right ankle");
 
  // add model information
- modelmap.insert_or_assign(L"Poacher", info);
+ modelmap.insert_or_assign(L"poacher", info);
 }
 
 void InitPonytail(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"ponytail", 6, 0.20f);
 
  // set camera targets
+ info.AddCameraTarget(L"ponytail", L"ponytail 1");
 
  // add model information
- modelmap.insert_or_assign(L"Ponytail", info);
+ modelmap.insert_or_assign(L"ponytail", info);
 }
 
 void InitRecorder(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"recorder", 4, 0.20f);
+ info.AddMeshParams(L"glass",    4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Recorder", info);
+ modelmap.insert_or_assign(L"recorder", info);
 }
 
 void InitScion1(void)
 {
  // mesh properties
  XNAClassicModel info;
+ info.AddMeshParams(L"scion1a", 5);
+ info.AddMeshParams(L"scion1b", 5);
+ info.AddMeshParams(L"scion1c", 7);
 
  // set camera targets
+ info.AddCameraTarget(L"scion1", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Scion1", info);
+ modelmap.insert_or_assign(L"scion1", info);
 }
 
 void InitScion2(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"scion2a", 5);
+ info.AddMeshParams(L"scion2b", 5);
+ info.AddMeshParams(L"scion2c", 5);
+ info.AddMeshParams(L"scion2d", 5);
+ info.AddMeshParams(L"scion2e", 7);
 
  // set camera targets
+ info.AddCameraTarget(L"scion2", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Scion2", info);
+ modelmap.insert_or_assign(L"scion2", info);
 }
 
 void InitScion3(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"scion3a", 5);
+ info.AddMeshParams(L"scion3b", 5);
+ info.AddMeshParams(L"scion3c", 5);
+ info.AddMeshParams(L"scion3d", 7);
 
  // set camera targets
+ info.AddCameraTarget(L"scion3", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Scion3", info);
+ modelmap.insert_or_assign(L"scion3", info);
 }
 
 void InitSharkBlue(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"body",   1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"mouth",  2, 0.10f);
+ info.AddMeshParams(L"eyes",   4, 0.40f);
+ info.AddMeshParams(L"teeth",  5);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 4");
+ info.AddCameraTarget(L"fin left", L"fin left 2");
+ info.AddCameraTarget(L"fin right", L"fin right 2");
+ info.AddCameraTarget(L"fin back", L"fin back root");
 
  // add model information
- modelmap.insert_or_assign(L"SharkBlue", info);
+ modelmap.insert_or_assign(L"shark_blue", info);
 }
 
 void InitSharkGreenland(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"body",   1, 0.20f, 12.0f, 12.0f);
+ info.AddMeshParams(L"eyes",   4, 0.40f);
+ info.AddMeshParams(L"teeth",  5);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 4");
+ info.AddCameraTarget(L"fin left", L"fin left 2");
+ info.AddCameraTarget(L"fin right", L"fin right 2");
+ info.AddCameraTarget(L"fin back", L"fin back root");
 
  // add model information
- modelmap.insert_or_assign(L"SharkGreenland", info);
+ modelmap.insert_or_assign(L"shark_greenland", info);
 }
 
 void InitShip(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ for(int i = 1; i <= 244; i++) {
+     std::wstringstream ss;
+     ss << L"part" << std::setfill(L'0') << std::setw(3) << i;
+     switch(i) {
+       case(96) : case(151) : case(239) : case(240) : case(242) : case(243) : case(244) : {
+            info.AddMeshParams(ss.str().c_str(), 16);
+            break;
+           }
+       case(69) : case(81): case(241) : {
+            info.AddMeshParams(ss.str().c_str(), 18);
+            break;
+           }
+      case(101) : case(102) : case(104) : case(108) : case(109) : case(112) : case(113) :
+      case(114) : case(117) : case(118) : case(124) : case(125) : case(127) : case(155) :
+      case(156) : case(160) : case(161) : case(165) : case(171) : case(172) : case(182) :
+      case(189) : case(190) : case(198) : case(199) : case(213) : case(214) : case(226) : {
+            info.AddMeshParams(ss.str().c_str(), 19);
+            break;
+           }
+       default : {
+            info.AddMeshParams(ss.str().c_str(), 17);
+            break;
+           }
+      }
+    }
+ 
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Ship", info);
+ modelmap.insert_or_assign(L"ship", info);
 }
 
 void InitShipNatlaRoom(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ for(int i = 1; i <= 55; i++) {
+     std::wstringstream ss;
+     ss << L"Mesh" << std::setfill(L'0') << std::setw(3) << i;
+     switch(i) {
+       case(31) : case(51) : case(52) : case(53) : {
+            info.AddMeshParams(ss.str().c_str(), 16);
+            break;
+           }
+       case( 5) : case( 6) : case(33) : case(50) : {
+            info.AddMeshParams(ss.str().c_str(), 19);
+            break;
+           }
+       case(47) : case(48) : case(49) : { // these do not exist
+            break;
+           }
+       default : {
+            info.AddMeshParams(ss.str().c_str(), 17);
+            break;
+           }
+      }
+    }
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"ShipNatlaRoom", info);
+ modelmap.insert_or_assign(L"ship_natla_room", info);
 }
 
 void InitSkyDomeThailandSea(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"dome1",      7); // half sphere map render group? RG_DOME
+ info.AddMeshParams(L"dome2",      7); // half sphere map render group?
+ info.AddMeshParams(L"dome3",      7); // half sphere map render group?
+ info.AddMeshParams(L"dome4",      7); // half sphere map render group?
+ info.AddMeshParams(L"clouds",     7); // what render group? RG_CLOUDS
 
  // set camera targets
+ // none
 
  // add model information
- modelmap.insert_or_assign(L"SkyDomeThailandSea", info);
+ modelmap.insert_or_assign(L"skydome_thailand_sea", info);
 }
 
 void InitThailandMirrorStatueLeft(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"body",  17);
+ info.AddMeshParams(L"fan1",  17);
+ info.AddMeshParams(L"fan2",  17);
+ info.AddMeshParams(L"cloth", 17);
+ info.AddMeshParams(L"deco",  17);
+ info.AddMeshParams(L"block", 17);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"ThailandMirrorStatueLeft", info);
+ modelmap.insert_or_assign(L"thailand_mirror_statue_left", info);
 }
 
 void InitThailandMirrorStatueRight(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"body",  17);
+ info.AddMeshParams(L"fan1",  17);
+ info.AddMeshParams(L"fan2",  17);
+ info.AddMeshParams(L"cloth", 17);
+ info.AddMeshParams(L"deco",  17);
+ info.AddMeshParams(L"block", 17);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"ThailandMirrorStatueRight", info);
+ modelmap.insert_or_assign(L"thailand_mirror_statue_right", info);
 }
 
 void InitTiger1(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh1", 1, 0.10f,  4.0f,  4.0f);
+ info.AddMeshParams(L"mesh2", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"mesh4", 2, 0.10f);
+ info.AddMeshParams(L"mesh3", 8, 0.10f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 2");
+ info.AddCameraTarget(L"pelvis", L"pelvis");
+ info.AddCameraTarget(L"tail", L"tail 4");
 
  // add model information
- modelmap.insert_or_assign(L"Tiger1", info);
+ modelmap.insert_or_assign(L"tiger1", info);
 }
 
 void InitTiger2(void)
 {
+ // NOTE: In the original XNALara, there is no tiger2 model. The source
+ // code actually loads tiger1 model if you try to load a model named tiger2.
+
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"mesh1", 1, 0.10f,  4.0f,  4.0f);
+ info.AddMeshParams(L"mesh2", 1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"mesh4", 2, 0.10f);
+ info.AddMeshParams(L"mesh3", 8, 0.10f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body", L"spine 2");
+ info.AddCameraTarget(L"pelvis", L"pelvis");
+ info.AddCameraTarget(L"tail", L"tail 4");
 
  // add model information
- modelmap.insert_or_assign(L"Tiger2", info);
+ modelmap.insert_or_assign(L"tiger2", info);
 }
 
 void InitVikingThrall(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
-
+ info.AddMeshParams(L"part1",      1, 0.50f,  8.0f,  8.0f);
+ info.AddMeshParams(L"part2",      1, 0.50f,  8.0f,  8.0f);
+ info.AddMeshParams(L"part3",      1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part5",      1, 0.20f, 16.0f, 16.0f);
+ info.AddMeshParams(L"part8",      1, 0.20f, 32.0f, 32.0f);
+ info.AddMeshParams(L"part9",      1, 0.20f, 32.0f, 32.0f);
+ info.AddMeshParams(L"part10",     1, 0.20f, 32.0f, 32.0f);
+ info.AddMeshParams(L"part12",     7);
+ info.AddMeshParams(L"part4",      8, 0.05f);
+ info.AddMeshParams(L"part6",      8, 0.05f);
+ info.AddMeshParams(L"part7",      8, 0.05f);
+ info.AddMeshParams(L"part11",     8, 0.05f);
+ 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTarget(L"body lower", L"pelvis");
+ info.AddCameraTarget(L"hand left", L"arm left wrist");
+ info.AddCameraTarget(L"hand right", L"arm right wrist");
+ info.AddCameraTarget(L"knee left", L"leg left knee");
+ info.AddCameraTarget(L"knee right", L"leg right knee");
+ info.AddCameraTarget(L"foot left", L"leg left ankle");
+ info.AddCameraTarget(L"foot right", L"leg right ankle");
 
  // add model information
- modelmap.insert_or_assign(L"VikingThrall", info);
+ modelmap.insert_or_assign(L"viking_thrall", info);
 }
 
 void InitWeaponAKRifle(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponAKRifle", info);
+ modelmap.insert_or_assign(L"weapon_ak_rifle", info);
 }
 
 void InitWeaponAssaultRifle(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part2",      4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponAssaultRifle", info);
+ modelmap.insert_or_assign(L"weapon_assault_rifle", info);
 }
 
 void InitWeaponGrenade(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 1, 0.30f, 4.0f, 4.0f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponGrenade", info);
+ modelmap.insert_or_assign(L"weapon_grenade", info);
 }
 
 void InitWeaponHandgun(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponHandgun", info);
+ modelmap.insert_or_assign(L"weapon_handgun", info);
 }
 
 void InitWeaponShotgun(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.40f);
+ info.AddMeshParams(L"part2", 4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponShotgun", info);
+ modelmap.insert_or_assign(L"weapon_shotgun", info);
 }
 
 void InitWeaponSpeargun(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.40f);
+ info.AddMeshParams(L"part2", 4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponSpeargun", info);
+ modelmap.insert_or_assign(L"weapon_speargun", info);
 }
 
 void InitWeaponTranquilizer(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.40f);
+ info.AddMeshParams(L"part2", 4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponTranquilizer", info);
+ modelmap.insert_or_assign(L"weapon_tranquilizer", info);
 }
 
 void InitWeaponUzi(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.40f);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"WeaponUzi", info);
+ modelmap.insert_or_assign(L"weapon_uzi", info);
 }
 
 void InitWings(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"wingbonesleft",  1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"wingbonesright", 1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"wingleft",       1, 0.10f, 16.0f, 16.0f);
+ info.AddMeshParams(L"wingright",      1, 0.10f, 16.0f, 16.0f);
 
  // set camera targets
+ info.AddCameraTarget(L"wing left", L"wing left 7c");
+ info.AddCameraTarget(L"wing right", L"wing right 7c");
 
  // add model information
- modelmap.insert_or_assign(L"Wings", info);
+ modelmap.insert_or_assign(L"wings", info);
 }
 
 void InitWinston(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"trousers",   1, 0.05f, 16.0f, 16.0f);
+ info.AddMeshParams(L"vest",       1, 0.05f,  8.0f,  8.0f);
+ info.AddMeshParams(L"suitleft",   1, 0.05f, 16.0f, 16.0f);
+ info.AddMeshParams(L"suitright",  1, 0.05f, 16.0f, 16.0f);
+ info.AddMeshParams(L"shoes",      1, 0.10f,  4.0f,  4.0f);
+ info.AddMeshParams(L"hands",      1, 0.10f,  8.0f,  8.0f);
+ info.AddMeshParams(L"shirt",      1, 0.05f,  8.0f,  8.0f);
+ info.AddMeshParams(L"sleeves",    1, 0.05f, 12.0f, 12.0f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"hair1",      2, 0.10f);
+ info.AddMeshParams(L"face",       3);
+ info.AddMeshParams(L"eyes",       4, 0.10f);
+ info.AddMeshParams(L"eyeshading", 7);
+ info.AddMeshParams(L"eyebrows",   7);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"hair2",      9);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTarget(L"body lower", L"pelvis");
+ info.AddCameraTarget(L"hand left", L"arm left wrist");
+ info.AddCameraTarget(L"hand right", L"arm right wrist");
+ info.AddCameraTarget(L"knee left", L"leg left knee");
+ info.AddCameraTarget(L"knee right", L"leg right knee");
+ info.AddCameraTarget(L"foot left", L"leg left ankle");
+ info.AddCameraTarget(L"foot right", L"leg right ankle");
 
  // add model information
- modelmap.insert_or_assign(L"Winston", info);
+ modelmap.insert_or_assign(L"winston", info);
 }
 
 void InitWraithStone(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1", 4, 0.20f);
+ info.AddMeshParams(L"part2", 7);
 
  // set camera targets
+ info.AddCameraTarget(L"stone", L"stone");
 
  // add model information
- modelmap.insert_or_assign(L"WraithStone", info);
+ modelmap.insert_or_assign(L"wraith_stone", info);
 }
 
 void InitYacht(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part1",  16);
+ info.AddMeshParams(L"part2",  16);
+ info.AddMeshParams(L"part3",  16);
+ info.AddMeshParams(L"part4",  16);
+ info.AddMeshParams(L"part12", 16);
+ info.AddMeshParams(L"part23", 16);
+ info.AddMeshParams(L"part24", 16);
+ info.AddMeshParams(L"part25", 16);
+ info.AddMeshParams(L"part44", 16);
+ info.AddMeshParams(L"part5",  17);
+ info.AddMeshParams(L"part6",  17);
+ info.AddMeshParams(L"part7",  17);
+ info.AddMeshParams(L"part8",  17);
+ info.AddMeshParams(L"part9",  17);
+ info.AddMeshParams(L"part10", 17);
+ info.AddMeshParams(L"part11", 17);
+ info.AddMeshParams(L"part14", 17);
+ info.AddMeshParams(L"part15", 17);
+ info.AddMeshParams(L"part16", 17);
+ info.AddMeshParams(L"part17", 17);
+ info.AddMeshParams(L"part18", 17);
+ info.AddMeshParams(L"part19", 17);
+ info.AddMeshParams(L"part20", 17);
+ info.AddMeshParams(L"part21", 17);
+ info.AddMeshParams(L"part26", 17);
+ info.AddMeshParams(L"part27", 17);
+ info.AddMeshParams(L"part28", 17);
+ info.AddMeshParams(L"part29", 17);
+ info.AddMeshParams(L"part30", 17);
+ info.AddMeshParams(L"part31", 17);
+ info.AddMeshParams(L"part32", 17);
+ info.AddMeshParams(L"part33", 17);
+ info.AddMeshParams(L"part35", 17);
+ info.AddMeshParams(L"part36", 17);
+ info.AddMeshParams(L"part37", 17);
+ info.AddMeshParams(L"part38", 17);
+ info.AddMeshParams(L"part39", 17);
+ info.AddMeshParams(L"part40", 17);
+ info.AddMeshParams(L"part13", 18);
+ info.AddMeshParams(L"part22", 18);
+ info.AddMeshParams(L"part41", 18);
+ info.AddMeshParams(L"part42", 18);
 
  // set camera targets
+ info.AddCameraTarget(L"root", L"root");
 
  // add model information
- modelmap.insert_or_assign(L"Yacht", info);
+ modelmap.insert_or_assign(L"yacht", info);
 }
 
 void InitYetiThrall(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part3",  1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part4",  1, 0.50f,  8.0f,  8.0f);
+ info.AddMeshParams(L"part5a", 1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part5b", 1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part6",  1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part2",  2, 0.30f);
+ info.AddMeshParams(L"part7",  2, 0.10f);
+ info.AddMeshParams(L"part1a", 8, 0.10f);
+ info.AddMeshParams(L"part1b", 8, 0.10f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw 2");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTargetStandardLower();
 
  // add model information
- modelmap.insert_or_assign(L"YetiThrall", info);
+ modelmap.insert_or_assign(L"yeti_thrall", info);
 }
 
 void InitYetiThrallNoChains(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"part3",  1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part4",  1, 0.50f,  8.0f,  8.0f);
+ info.AddMeshParams(L"part5a", 1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part5b", 1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part6",  1, 0.15f, 12.0f, 12.0f);
+ info.AddMeshParams(L"part2",  2, 0.30f);
+ info.AddMeshParams(L"part7",  2, 0.10f);
+ info.AddMeshParams(L"part1a", 8, 0.10f);
+ info.AddMeshParams(L"part1b", 8, 0.10f);
 
  // set camera targets
+ info.AddCameraTarget(L"head", L"head jaw 2");
+ info.AddCameraTarget(L"body upper", L"arm left shoulder 1", L"arm right shoulder 1");
+ info.AddCameraTargetStandardLower();
 
  // add model information
- modelmap.insert_or_assign(L"YetiThrallNoChains", info);
+ modelmap.insert_or_assign(L"yeti_thrall_nochains", info);
 }
 
 void InitZip(void)
 {
  // mesh properties
  XNAClassicModel info;
- //info.AddMeshParams(L"coat1",      1, 0.05f, 16.0f, 16.0f);
- //info.AddMeshParams(L"legs",       2, 0.10f);
- //info.AddMeshParams(L"mouth",      3);
- //info.AddMeshParams(L"hair1",      4, 0.10f);
- //info.AddMeshParams(L"hair2",      5);
- //info.AddMeshParams(L"hair2",      6, 0.10f);
- //info.AddMeshParams(L"hair2",      7);
+ info.AddMeshParams(L"band",       1, 0.10f,  4.0f,  4.0f);
+ info.AddMeshParams(L"hair",       1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"jacket",     1, 0.03f, 16.0f, 16.0f);
+ info.AddMeshParams(L"shoes",      1, 0.10f, 12.0f, 12.0f);
+ info.AddMeshParams(L"trousers",   1, 0.03f,  8.0f,  8.0f);
+ info.AddMeshParams(L"face",       2, 0.10f);
+ info.AddMeshParams(L"handleft",   2, 0.10f);
+ info.AddMeshParams(L"handright",  2, 0.10f);
+ info.AddMeshParams(L"mouth",      2, 0.10f);
+ info.AddMeshParams(L"body",       3);
+ info.AddMeshParams(L"eyeirises",  4, 0.10f);
+ info.AddMeshParams(L"necklaces",  4, 0.10f);
+ info.AddMeshParams(L"eyewhites",  5);
+ info.AddMeshParams(L"watch",      5);
+ info.AddMeshParams(L"eyelashes",  7);
+ info.AddMeshParams(L"eyeshading", 7);
 
  // set camera targets
+ info.AddCameraTargetStandardUpperM();
+ info.AddCameraTargetStandardLower();
 
  // add model information
- modelmap.insert_or_assign(L"Zip", info);
+ modelmap.insert_or_assign(L"zip", info);
 }
 
 #pragma endregion CLASSIC_DEFINITIONS

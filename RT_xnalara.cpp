@@ -322,6 +322,9 @@ bool XNAExtractMeshParams(const std::wstring& src, XNAMeshParams& out)
       default : return error("Invalid render group.", __FILE__, __LINE__);
      }
    }
+ if(index == parts.size()) return true;
+ std::wcout << "# mesh name parts = " << parts.size() << std::endl;
+ std::wcout << "index = " << index << std::endl;
 
  // read 1st parameter
  out.params[0] = StringToReal32(parts[index++].c_str());
@@ -647,6 +650,9 @@ bool LoadGenericItem(const wchar_t* filename, XNAModel* model)
 
 bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
 {
+ // debug
+ bool debug = true;
+
  //
  // PHASE #1
  // READ FILE DATA
@@ -665,19 +671,31 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
  if(ifile.fail()) return error("Seek failure.", __FILE__, __LINE__);
  if(!filesize) return error("File contains nothing.", __FILE__, __LINE__);
 
- // pathname of file (switch to C++17 <filesystem>)
+ // pathname of file
  auto fullpath = std::filesystem::path(filename);
  STDSTRINGW pathname = fullpath.parent_path(); // path no filename no extension
  STDSTRINGW shrtname = fullpath.stem(); // filename no extension
  STDSTRINGW shrtpath = fullpath.parent_path().filename(); // short parent pathname
- wcout << "pathname = " << pathname.c_str() << endl;
- wcout << "shrtname = " << shrtname.c_str() << endl;
- wcout << "shrtpath = " << shrtpath.c_str() << endl;
+ if(debug) {
+    wcout << L"Filename: " << fullpath.c_str() << endl;
+    wcout << L"Pathname: " << pathname.c_str() << endl;
+    wcout << L"Short Filename: " << shrtname.c_str() << endl;
+    wcout << L"Short Pathname: " << shrtpath.c_str() << endl;
+   }
 
- // must be a classic model
- auto classic = GetClassicModel(shrtpath.c_str());
- if(!classic) return error(__FILE__, __LINE__);
+ //
+ // PHASE #2
+ // DETERMINE FORMAT
+ //
 
+ // classic model test that assumes generic if test fails
+ const XNAClassicModel* classic = nullptr;
+ if(_wcsicmp(shrtname.c_str(), L"generic_item") != 0) classic = GetClassicModel(shrtpath.c_str());
+ if(debug) {
+    if(classic) wcout << L"XNALara 9.7.8 Classic Format" << endl;
+    else wcout << L"XNALara 9.7.8 Generic Item Format" << endl;
+   }
+    
  //
  // PHASE #2
  // READ SKELETON
@@ -686,6 +704,7 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
  // read number of joints
  unsigned int n_jnts = 0;
  if(!XNAReadUint32(ifile, n_jnts)) return error(__FILE__, __LINE__);
+ if(debug) wcout << L"# of joints = " << n_jnts << endl;
 
  // create bone list
  std::vector<XNABone> bonelist;
@@ -718,6 +737,7 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
  unsigned int n_mesh = 0;
  if(!XNAReadUint32(ifile, n_mesh)) return error(__FILE__, __LINE__);
  if(!n_mesh) return error(__FILE__, __LINE__);
+ if(debug) wcout << L"# of meshes = " << n_mesh << endl;
 
  // read meshes
  uint32_t total_faces = 0;
@@ -733,31 +753,46 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      // read name
      std::wstring name;
      if(!XNAReadBinaryString(ifile, name)) return error(__FILE__, __LINE__);
+     if(debug) {
+        wcout << L"mesh[" << i << L"] = " << name << endl;
+       }
 
-     // thorwireframe
+     // thorwireframe mesh
      bool thorwireframe = false;
      if(_wcsicmp(name.c_str(), L"thorwireframe") == 0) thorwireframe = true;
 
-     // ignore mesh if not found in hardcoded parameter map
-     auto params = classic->params.find(name.c_str());
+     // classic format
      bool ignore = false;
-     if(params == classic->params.end()) ignore = true;
+     if(classic)
+       {
+        // ignore mesh if not found in hardcoded parameter map
+        auto params = classic->params.find(name.c_str());
+        if(params == classic->params.end()) ignore = true;
 
-     // !!! DELETE ME !!!
-     if(ignore) wcout << "mesh[" << i << "] = " << name.c_str() << " (ignored)" << endl;
-     else wcout << "mesh[" << i << "] = " << name.c_str() << endl;
+        // debug
+        if(debug && ignore)
+           wcout << L"This (classic) mesh must be ignored." << endl;
 
-     // set render parameters
-     if(!ignore) {
-        mesh.params.render_group = params->second.render_group;
-        mesh.params.optional[0] = false;
-        mesh.params.optional[1] = params->second.visible;
-        mesh.params.fullname = name; // want to construct a generic_item name instead?
-        mesh.params.name = name;
-        mesh.params.params[0] = params->second.params[0];
-        mesh.params.params[1] = params->second.params[1];
-        mesh.params.params[2] = params->second.params[2];
-        XNASetShader(mesh.params, thorwireframe);
+        // set render parameters
+        if(!ignore) {
+           mesh.params.render_group = params->second.render_group;
+           mesh.params.optional[0] = false;
+           mesh.params.optional[1] = params->second.visible;
+           mesh.params.fullname = name; // want to construct a generic_item name instead?
+           mesh.params.name = name;
+           mesh.params.params[0] = params->second.params[0];
+           mesh.params.params[1] = params->second.params[1];
+           mesh.params.params[2] = params->second.params[2];
+           XNASetShader(mesh.params, thorwireframe);
+          }
+       }
+     else {
+        if(!XNAExtractMeshParams(name, mesh.params)) {
+           ignore = true;
+           std::wstringstream ss;
+           ss << L"generic_item contains a mesh " << '\"' << name.c_str() << '\"' << L" with invalid mesh parameters.";
+           warning(ss.str().c_str());
+          }
        }
 
      // read number of UV channels
@@ -785,12 +820,12 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
          // read texture filename
          XNATexture& texture = mesh.textures[j];
          if(!XNAReadBinaryString(ifile, texture.name)) return error(__FILE__, __LINE__);
-         wcout << " texture[" << i << "] = " << texture.name.c_str() << endl;
+         if(debug) wcout << " texture[" << j << "] = " << texture.name.c_str() << endl;
          // read texture channels
          texture.channel = 0;
          if(!XNAReadUint32(ifile, texture.channel)) return error(__FILE__, __LINE__);
          if(!(texture.channel < mesh.n_channels)) return error(__FILE__, __LINE__);
-         // strip pathname and load texture
+         // load texture (if mesh is not ignored)
          texture.name = GetShortFilenameW(texture.name.c_str());
          if(!ignore) {
             STDSTRINGSTREAMW ss;
@@ -803,7 +838,6 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      mesh.n_vert = 0;
      if(!XNAReadUint32(ifile, mesh.n_vert)) return error(__FILE__, __LINE__);
      if(!mesh.n_vert) return error(__FILE__, __LINE__);
-     cout << " # verts = " << mesh.n_vert << endl;
 
      // read vertices
      if(mesh.n_vert) mesh.verts.resize(mesh.n_vert);
@@ -852,7 +886,6 @@ bool LoadXNAMeshBin(const wchar_t* filename, XNAModel* model)
      mesh.n_face = 0;
      if(!XNAReadUint32(ifile, mesh.n_face)) return error(__FILE__, __LINE__);
      if(!mesh.n_face) return error(__FILE__, __LINE__);
-     cout << " # faces = " << mesh.n_face << endl;
 
      // read faces
      mesh.faces.resize(mesh.n_face);

@@ -25,7 +25,8 @@ struct XNAClassicModel {
  void AddMeshParams(const STDSTRINGW& name, uint16_t rg, float a, float b, float c, bool visible = true);
  void AddCameraTarget(const STDSTRINGW& name, const STDSTRINGW& b1);
  void AddCameraTarget(const STDSTRINGW& name, const STDSTRINGW& b1, const STDSTRINGW& b2);
- void AddCameraTargetStandardUpper(void);
+ void AddCameraTargetStandardUpperF(void);
+ void AddCameraTargetStandardUpperM(void);
  void AddCameraTargetStandardLower(void);
 };
 

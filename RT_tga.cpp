@@ -1,14 +1,224 @@
 #include "stdafx.h"
 #include "RT_win32.h"
+#include "RT_stream.h"
+#include "RT_imgproc.h"
 #include "RT_tga.h"
 
-static int C5_map[32] = {
- 0x00, 0x08, 0x10, 0x19, 0x21, 0x29, 0x31, 0x3a,
- 0x42, 0x4a, 0x52, 0x5a, 0x63, 0x6b, 0x73, 0x7b,
- 0x84, 0x8c, 0x94, 0x9c, 0xa5, 0xad, 0xb5, 0xbd,
- 0xc5, 0xce, 0xd6, 0xde, 0xe6, 0xef, 0xf7, 0xff,
+#pragma region FORWARD_DECLARATIONS
+
+struct TGAHEADER {
+ BYTE id_length;        // 0
+ BYTE color_map_type;   // 1
+ BYTE image_type;       // 2
+ WORD color_map_origin; // 3
+ WORD color_map_length; // 5
+ BYTE color_map_bits;   // 7
+ WORD xorigin;          // 8
+ WORD yorigin;          // 10
+ WORD dx;               // 12
+ WORD dy;               // 14
+ BYTE pixel_depth;      // 16
+ BYTE image_descriptor; // 17
 };
 
+struct TGAFOOTER {
+ DWORD eao;          // 00-03: The Extension Area Offset
+ DWORD ddo;          // 04-07: The Developer Directory Offset
+ char signature[18]; // 08-25: "TRUEVISION-XFILE.\0"
+};
+
+// Explict Handling
+BOOL TGAImageType01(std::stringstream& ss, const TGAHEADER& header, LPIMGDATA out);
+BOOL TGAImageType02(std::stringstream& ss, const TGAHEADER& header, LPIMGDATA out);
+BOOL TGAImageType03(std::stringstream& ss, const TGAHEADER& header, LPIMGDATA out);
+BOOL TGAImageType09(std::stringstream& ss, const TGAHEADER& header, LPIMGDATA out);
+BOOL TGAImageType10(std::stringstream& ss, const TGAHEADER& header, LPIMGDATA out);
+BOOL TGAImageType11(std::stringstream& ss, const TGAHEADER& header, LPIMGDATA out);
+
+#pragma endregion FORWARD_DECLARATIONS
+
+bool LoadTGA(LPCWSTR filename, LPIMGDATA out)
+{
+ //
+ // DATA
+ //
+
+ TGAHEADER header;
+ TGAFOOTER footer;
+ std::unique_ptr<BYTE[]> filedata;
+
+ // constexpr
+ constexpr DWORD header_size = 18;
+ constexpr DWORD footer_size = 26;
+
+ // open file for reading
+ if(!filename) return error(__FILE__, __LINE__);
+ HANDLE handle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+ if(!handle) return error(__FILE__, __LINE__);
+
+ // get filesize
+ DWORD filesize = 0;
+ if(!GetFileSize(handle, &filesize)) return error(__FILE__, __LINE__);
+ if(filesize < 18) return error(__FILE__, __LINE__); // size of TGA header
+
+ // read file data
+ filedata.reset(new BYTE[filesize]);
+ DWORD bytes_read = 0;
+ if(!ReadFile(handle, (LPVOID)filedata.get(), filesize, &bytes_read, NULL)) return error(__FILE__, __LINE__);
+
+ //
+ // READ HEADER
+ //
+
+ // read file header
+ BYTE* ptr = filedata.get();
+ header.id_length = *reinterpret_cast<BYTE*>(ptr); ptr++;
+ header.color_map_type = *reinterpret_cast<BYTE*>(ptr); ptr++;
+ header.image_type = *reinterpret_cast<BYTE*>(ptr); ptr++;
+ header.color_map_origin = *reinterpret_cast<WORD*>(ptr); ptr += 2;
+ header.color_map_length = *reinterpret_cast<WORD*>(ptr); ptr += 2;
+ header.color_map_bits = *reinterpret_cast<BYTE*>(ptr); ptr++;
+ header.xorigin = *reinterpret_cast<WORD*>(ptr); ptr += 2;
+ header.yorigin = *reinterpret_cast<WORD*>(ptr); ptr += 2;
+ header.dx = *reinterpret_cast<WORD*>(ptr); ptr += 2;
+ header.dy = *reinterpret_cast<WORD*>(ptr); ptr += 2;
+ header.pixel_depth = *reinterpret_cast<BYTE*>(ptr); ptr++;
+ header.image_descriptor = *reinterpret_cast<BYTE*>(ptr); ptr++;
+
+ // validate header
+ if(header.color_map_type > 1) return error(__FILE__, __LINE__);
+ switch(header.image_type) {
+    case(0x0): case(0x1): case(0x2): case(0x3): break;
+    case(0x9): case(0xA): case(0xB) : break;
+    default: return error(__FILE__, __LINE__);
+   }
+ if(header.color_map_type == 1 && header.color_map_length) {
+    switch(header.color_map_bits) {
+      case(0x08): case(0x0F): case(0x10): case(0x18): case(0x20): break;
+      default: return error(__FILE__, __LINE__);
+     }
+   }
+
+ //
+ // READ FOOTER
+ //
+
+ // determine presence of footer
+ DWORD min_filesize_with_footer = header_size + footer_size + static_cast<DWORD>(header.id_length);
+ bool has_footer = false;
+ if(!(filesize < min_filesize_with_footer)) {
+    BYTE* ptr = filedata.get() + (filesize - footer_size + 8);
+    if(strcmp(reinterpret_cast<const char*>(ptr), "TRUEVISION-XFILE.") == 0) has_footer = true;
+   }
+
+ // read footer
+ DWORD eao = 0;
+ DWORD ddo = 0;
+ if(has_footer) {
+    // read footer
+    BYTE* ptr = filedata.get() + (filesize - footer_size);
+    eao = *reinterpret_cast<DWORD*>(ptr); ptr += 4;
+    ddo = *reinterpret_cast<DWORD*>(ptr); ptr += 4;
+    // validate footer
+   }
+
+ //
+ // VALIDATION?
+ //
+
+ //
+ // LAMBDAS
+ //
+
+ auto GetAlphaBits = [&](void) { return (header.image_descriptor & 0xF); };
+ auto GetHorzTransferOrder = [&](void) { return ((header.image_descriptor & 0x10) >> 4); };
+ auto GetVertTransferOrder = [&](void) { return ((header.image_descriptor & 0x20) >> 5); };
+ auto IsCompressed = [&](void) { return ((header.image_type == 9) || (header.image_type == 10) || (header.image_type == 11)); };
+
+ auto TGARLE32 = [&](const BYTE* src, BYTE* dst, BYTE header, UINT count) {
+  // compressed, read item and repeat 'count' times
+  if(header & 0b10000000) {
+     DWORD offset = 0;
+     for(UINT i = 0; i < count; i++) {
+         dst[offset++] = src[0]; // B
+         dst[offset++] = src[1]; // G
+         dst[offset++] = src[2]; // R
+         dst[offset++] = src[3]; // A
+        }
+    }
+  // uncompressed, read 'count' items
+  else {
+     DWORD offset = 0;
+     for(UINT i = 0; i < count; i++) {
+         dst[offset] = src[offset]; offset++; // B
+         dst[offset] = src[offset]; offset++; // G
+         dst[offset] = src[offset]; offset++; // R
+         dst[offset] = src[offset]; offset++; // A
+        }
+    }
+ };
+
+ //
+ // DECOMPRESSION
+ //
+
+ if(IsCompressed())
+   {
+    // decompress data
+    DWORD n_pixels = ((DWORD)header.dx)*((DWORD)header.dy);
+    DWORD curr = 0;
+    BYTE* data = filedata.get() + header_size + static_cast<DWORD>(header.id_length);
+    while(curr < n_pixels) {
+          // read packet header
+          BYTE ph = *reinterpret_cast<BYTE*>(data);
+          data++;
+          // 'count' colors can be added (clamp 'count' to prevent crashing)
+          UINT count = (ph & 0x7F) + 1;
+          if(!(curr + count < n_pixels)) count = n_pixels - curr;
+          // RLE packet processing
+          //if(!op(ss, dst, ph, count)) return FALSE;
+          curr += count;
+
+          // // RLE packet (read a single index and reuse it 'count' times)
+          // if(ph & 0x80) {
+          //    T value;
+          //    ss.read((char*)&value, sizeof(value));
+          //    if(ss.fail()) return FALSE;
+          //    for(UINT i = 0; i < count; i++) dst[curr + i] = value;
+          //   }
+          // // RAW packet (read 'count' indices)
+          // else {
+          //    ss.read((char*)&dst[curr], count*sizeof(T)); 
+          //    if(ss.fail()) return FALSE;
+          //   }
+         }
+   }
+ else
+   {
+   }
+
+ //
+ //
+ //
+ if(header.image_type == 0x0)
+    
+ if(header.image_type == 0x1 || header.image_type == 0x9) // COLOR-MAPPED
+   {
+    return true;
+   }
+ if(header.image_type == 0x2 || header.image_type == 0xA) // RGB
+   {
+    return true;
+   }
+ if(header.image_type == 0x3 || header.image_type == 0xB) // GRAYSCALE
+   {
+    return true;
+   }
+
+ return false;
+}
+
+/*
 #pragma region FORWARD_DECLARATIONS
 
 // Explict Handling
@@ -23,43 +233,71 @@ BOOL TGAImageType11(std::stringstream& ss, const TGAHEADER& header, LPTGADATA ou
 
 #pragma region TGA_COLOR_MAPPING_FUNCTION_OBJECTS
 
-void TGA15_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst)
-{
- const WORD* ptr = reinterpret_cast<const WORD*>(colormap);
- dst[0] = C5_map[(ptr[index] & 0x001F)];
- dst[1] = C5_map[(ptr[index] & 0x03E0) >>  5];
- dst[2] = C5_map[(ptr[index] & 0x7C00) >> 10];
- dst[3] = 0;
-}
+static int C5_map[32] = {
+ 0x00, 0x08, 0x10, 0x19, 0x21, 0x29, 0x31, 0x3a,
+ 0x42, 0x4a, 0x52, 0x5a, 0x63, 0x6b, 0x73, 0x7b,
+ 0x84, 0x8c, 0x94, 0x9c, 0xa5, 0xad, 0xb5, 0xbd,
+ 0xc5, 0xce, 0xd6, 0xde, 0xe6, 0xef, 0xf7, 0xff,
+};
 
-void TGA16_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst)
-{
- const WORD* ptr = reinterpret_cast<const WORD*>(colormap);
- dst[0] = C5_map[(ptr[index] & 0x001F)];
- dst[1] = C5_map[(ptr[index] & 0x03E0) >>  5];
- dst[2] = C5_map[(ptr[index] & 0x7C00) >> 10];
- dst[3] = ((ptr[index] & 0x8000) ? 255 : 0);
-}
+// 24-bit Color Mapping Functions
+struct TGA15_to_D3D24 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+ }
+};
+struct TGA16_to_D3D24 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+ }
+};
+struct TGA24_to_D3D24 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+ }
+};
+struct TGA32_to_D3D24 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+ }
+};
 
-void TGA24_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst)
-{
- size_t offset = 3*index;
- dst[0] = colormap[offset + 0];
- dst[1] = colormap[offset + 1];
- dst[2] = colormap[offset + 2];
- dst[3] = 0;
-}
+// 32-bit Color Mapping Functions
+struct TGA15_to_D3D32 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+  const WORD* ptr = reinterpret_cast<const WORD*>(colormap);
+  dst[0] = C5_map[(ptr[index] & 0x001F)];
+  dst[1] = C5_map[(ptr[index] & 0x03E0) >>  5];
+  dst[2] = C5_map[(ptr[index] & 0x7C00) >> 10];
+  dst[3] = 255;
+ }
+};
+struct TGA16_to_D3D32 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+  const WORD* ptr = reinterpret_cast<const WORD*>(colormap);
+  dst[0] = C5_map[(ptr[index] & 0x001F)];
+  dst[1] = C5_map[(ptr[index] & 0x03E0) >>  5];
+  dst[2] = C5_map[(ptr[index] & 0x7C00) >> 10];
+  dst[3] = ((ptr[index] & 0x8000) ? 255 : 0);
+ }
+};
+struct TGA24_to_D3D32 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+  size_t offset = 3*index;
+  dst[0] = colormap[offset++];
+  dst[1] = colormap[offset++];
+  dst[2] = colormap[offset];
+  dst[3] = 255;
+ }
+};
+struct TGA32_to_D3D32 { 
+ void operator ()(const BYTE* colormap, size_t index, BYTE* dst)const {
+  size_t offset = 4*index;
+  dst[0] = colormap[offset + 0];
+  dst[1] = colormap[offset + 1];
+  dst[2] = colormap[offset + 2];
+  dst[3] = colormap[offset + 3];
+ }
+};
 
-void TGA32_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst)
-{
- size_t offset = 4*index;
- dst[0] = colormap[offset + 0];
- dst[1] = colormap[offset + 1];
- dst[2] = colormap[offset + 2];
- dst[3] = colormap[offset + 3];
-}
-
-BOOL TGACopyColorMappedImage(DWORD dx, DWORD dy, const BYTE* colormap, const BYTE* src, UINT bpp, BYTE* dst, ColorMapConversionOp cop)
+template<class ConversionOp>
+BOOL TGACopyColorMappedImage(DWORD dx, DWORD dy, const BYTE* colormap, const BYTE* src, UINT bpp, BYTE* dst, ConversionOp cop)
 {
  DWORD pitch_bytes = 4*dx*dy;
  if(bpp == 8) {
@@ -89,7 +327,7 @@ BOOL TGACopyColorMappedImage(DWORD dx, DWORD dy, const BYTE* colormap, const BYT
  return TRUE;
 }
 
-#pragma endregion TGA_COLOR_MAPPING_FUNCTION OBJECTS
+#pragma endregion TGA_COLOR_MAPPING_FUNCTION_OBJECTS
 
 #pragma region TGA_COLOR_FUNCTION_OBJECTS
 
@@ -951,3 +1189,4 @@ bool LoadTGA(const LPCWSTR filename, LPTGADATA data)
 }
 
 #pragma endregion TGA_LOADSAVE
+*/

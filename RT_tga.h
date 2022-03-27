@@ -1,36 +1,17 @@
 #ifndef __TGA_H
 #define __TGA_H
 
-typedef struct tagTGADATA {
- DWORD dx, dy, bpp;
- DWORD pitch_bytes;
- DWORD total_bytes;
- BOOL has_alpha;
- std::unique_ptr<BYTE[]> data;
-} TGADATA, *LPTGADATA, *PTGADATA;
+bool LoadTGA(LPCWSTR filename, LPIMGDATA out);
 
-struct TGAHEADER {
- BYTE imageID;
- BYTE color_map_type;
- BYTE image_type;
- WORD color_map_origin;
- WORD color_map_length;
- BYTE color_map_bits;
- WORD xorigin;
- WORD yorigin;
- WORD dx;
- WORD dy;
- BYTE pixel_depth;
- BYTE image_descriptor;
-};
+/*
 
 // Color Mapping Function Objects
-typedef void (*ColorMapConversionOp)(const BYTE* colormap, size_t index, BYTE* dst);
-void TGA15_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
-void TGA16_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
-void TGA24_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
-void TGA32_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
-BOOL TGACopyColorMappedImage(DWORD dx, DWORD dy, const BYTE* colormap, const BYTE* src, UINT bpp, BYTE* dst, ColorMapConversionOp cop);
+// typedef void (*ColorMapConversionOp)(const BYTE* colormap, size_t index, BYTE* dst);
+// void TGA15_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
+// void TGA16_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
+// void TGA24_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
+// void TGA32_to_D3D32(const BYTE* colormap, size_t index, BYTE* dst);
+// BOOL TGACopyColorMappedImage(DWORD dx, DWORD dy, const BYTE* colormap, const BYTE* src, UINT bpp, BYTE* dst, ColorMapConversionOp cop);
 
 // Color Function Objects
 struct TGAMono08 {
@@ -87,7 +68,8 @@ struct TGAColorRLE24 : TGABaseRLE {
 struct TGAColorRLE32 : TGABaseRLE {
  BOOL operator ()(std::stringstream& ss, BYTE* dst, BYTE header, UINT count);
 };
+*/
 
-bool LoadTGA(const LPCWSTR filename, LPTGADATA data);
+bool LoadTGA(const LPCWSTR filename, LPIMGDATA data);
 
 #endif

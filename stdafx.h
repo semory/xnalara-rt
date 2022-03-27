@@ -74,4 +74,24 @@ inline float StringToReal32(const wchar_t* str) { return wcstof(str, nullptr); }
 
 #endif
 
+#ifndef RC_INVOKED
+
+template<class T>
+inline void reverse_byte_order(T* data)
+{
+ unsigned char* ptr = reinterpret_cast<unsigned char*>(data);
+ std::reverse(ptr, ptr + sizeof(T)); 
+}
+
+template<class T>
+inline void reverse_byte_order(T* data, size_t elem)
+{
+ for(size_t i = 0; i < elem; i++) {
+     unsigned char* ptr = reinterpret_cast<unsigned char*>(&data[i]);
+     std::reverse(ptr, ptr + sizeof(T));
+    }
+}
+
+#endif
+
 #endif

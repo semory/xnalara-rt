@@ -12,14 +12,18 @@
 
 auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
 {
- // strip off to clamp (u,v) to [-1, +1]
- float intpart;
- u = std::modf(u, &intpart);
- v = std::modf(v, &intpart);
+ // uv wrapping mode
+ u = u - std::floor(u);
+ v = v - std::floor(v);
 
- // u and v should range from [0, 1]
- if(u < 0.0f) u += 1.0f;
- if(v < 0.0f) v += 1.0f;
+ // // strip off to clamp (u,v) to [-1, +1]
+ // float intpart;
+ // u = std::modf(u, &intpart);
+ // v = std::modf(v, &intpart);
+ 
+ // // u and v should range from [0, 1]
+ // if(u < 0.0f) u += 1.0f;
+ // if(v < 0.0f) v += 1.0f;
 
  // obtain image coordinates from UV
  float x = (ptr->dx - 1)*u;
@@ -100,14 +104,18 @@ auto sampler_BGRA = [](XNATextureData* ptr, float u, float v)
 
 auto sampler_BGRX = [](XNATextureData* ptr, float u, float v)
 {
- // strip off to clamp (u,v) to [-1, +1]
- float intpart;
- u = modff(u, &intpart);
- v = modff(v, &intpart);
+ // uv wrapping mode
+ u = u - std::floor(u);
+ v = v - std::floor(v);
 
- // u and v should range from [0, 1]
- if(u < 0.0f) u += 1.0f;
- if(v < 0.0f) v += 1.0f;
+ // // strip off to clamp (u,v) to [-1, +1]
+ // float intpart;
+ // u = modff(u, &intpart);
+ // v = modff(v, &intpart);
+
+ // // u and v should range from [0, 1]
+ // if(u < 0.0f) u += 1.0f;
+ // if(v < 0.0f) v += 1.0f;
 
  // obtain image coordinates from UV
  float x = (ptr->dx - 1)*u;
@@ -206,14 +214,9 @@ auto sampler_BGR = [](XNATextureData* ptr, float u, float v)
  return result;
 */
 
- // strip off to clamp (u,v) to [-1, +1]
- float intpart;
- u = modff(u, &intpart);
- v = modff(v, &intpart);
-
- // u and v should range from [0, 1]
- if(u < 0.0f) u += 1.0f;
- if(v < 0.0f) v += 1.0f;
+ // uv wrapping mode
+ u = u - std::floor(u);
+ v = v - std::floor(v);
 
  // obtain image coordinates from UV
  float x = (ptr->dx - 1)*u;

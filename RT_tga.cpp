@@ -39,6 +39,7 @@ BOOL TGAImageType11(std::stringstream& ss, const TGAHEADER& header, LPIMGDATA ou
 
 bool LoadTGA(LPCWSTR filename, LPIMGDATA out)
 {
+ /*
  //
  // DATA
  //
@@ -214,6 +215,7 @@ bool LoadTGA(LPCWSTR filename, LPIMGDATA out)
    {
     return true;
    }
+ */
 
  return false;
 }

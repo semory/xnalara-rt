@@ -942,25 +942,21 @@ inline float InterpolateTangent(const XNAShaderData* input, uint32_t channel, fl
 // Interpolate UVs from a specific channel
 inline void InterpolateUV(const XNAShaderData* input, uint32_t channel, float* uv)
 {
- float ipt;
- float u = input->u;
- float v = input->v;
- float w = input->w;
- uv[0] = u*modf(input->v0->uv[channel][0], &ipt) + v*modf(input->v1->uv[channel][0], &ipt) + w*modf(input->v2->uv[channel][0], &ipt);
- uv[1] = u*modf(input->v0->uv[channel][1], &ipt) + v*modf(input->v1->uv[channel][1], &ipt) + w*modf(input->v2->uv[channel][1], &ipt);
+ // interpolate UV coordinates
+ // do not floor UVs here as texture sampler is responsible for texture wrapping
+ uv[0] = input->u * input->v0->uv[channel][0] + input->v * input->v1->uv[channel][0] + input->w * input->v2->uv[channel][0];
+ uv[1] = input->u * input->v0->uv[channel][1] + input->v * input->v1->uv[channel][1] + input->w * input->v2->uv[channel][1];
 }
 
 // Interpolate UVs on all channels
 template<uint32_t rows, uint32_t cols>
 inline void InterpolateUV(const XNAShaderData* input, float (&uv)[rows][cols])
 {
- float ipt;
- float u = input->u;
- float v = input->v;
- float w = input->w;
+ // interpolate UV coordinates
+ // do not floor UVs here as texture sampler is responsible for texture wrapping
  for(uint32_t i = 0; i < input->model->meshlist[input->face->mesh_index].n_channels; i++) {
-     uv[i][0] = u*modf(input->v0->uv[i][0], &ipt) + v*modf(input->v1->uv[i][0], &ipt) + w*modf(input->v2->uv[i][0], &ipt);
-     uv[i][1] = u*modf(input->v0->uv[i][1], &ipt) + v*modf(input->v1->uv[i][1], &ipt) + w*modf(input->v2->uv[i][1], &ipt);
+     uv[i][0] = input->u*input->v0->uv[i][0] + input->v*input->v1->uv[i][0] + input->w*input->v2->uv[i][0];
+     uv[i][1] = input->u*input->v0->uv[i][1] + input->v*input->v1->uv[i][1] + input->w*input->v2->uv[i][1];
     }
 }
 

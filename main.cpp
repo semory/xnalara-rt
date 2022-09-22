@@ -18,7 +18,7 @@ bool Render(const wchar_t* filename)
 
  // initialize default camera and lights
  InitCamera();
- SetCameraPosition(0.0f, 1.0f, 80.0f);
+ SetCameraPosition(0.0f, 1.5f, 6.0f);
  InitLights();
 
  // set rendering variables
@@ -27,6 +27,7 @@ bool Render(const wchar_t* filename)
 
  // render
  SetTargetDims(1920, 1080);
+ // SetTargetDims(640, 480);
  std::cout << "1920 x 1080" << std::endl;
  STDSTRINGW outname = shrtpath;
  outname += L"_1920x1080.bmp";
@@ -53,9 +54,9 @@ int Run(void)
  // Render(L"D:\\XNALara\\Models\\original\\dummy\\dummy.mesh");
  // Render(L"D:\\XNALara\\Models\\original\\excalibur\\excalibur.mesh");
  // Render(L"D:\\XNALara\\Models\\original\\foliage_tree1\\foliage_tree1.mesh");
- // Render(L"D:\\XNALara\\Models\\original\\foliage_tree2\\foliage_tree2.mesh"); // UV mapping problem with sampler
+ // Render(L"D:\\XNALara\\Models\\original\\foliage_tree2\\foliage_tree2.mesh");
  // Render(L"D:\\XNALara\\Models\\original\\foliage_tree3\\foliage_tree3.mesh");
- Render(L"C:\\XNALara\\Models\\original\\foliage_tree4\\foliage_tree4.mesh"); // UV mapping problem with sampler
+ // Render(L"D:\\XNALara\\Models\\original\\foliage_tree4\\foliage_tree4.mesh");
  // Render(L"D:\\XNALara\\Models\\original\\ghalali_key\\ghalali_key.obj");
  // Render(L"D:\\XNALara\\Models\\original\\glass_cage\\glass_cage.mesh");
  // Render(L"D:\\XNALara\\Models\\original\\glasses\\glasses.mesh");
@@ -158,7 +159,7 @@ int Run(void)
 
  // Render(L"D:\\XNALara\\Models\\XNA\\trdaz\\ArNoSurge_Ionasal_Default\\generic_item.mesh");
 
- // Render(L"C:\\Users\\moby_\\Desktop\\xnalara\\models\\Alcina Dimitrescu\\xps.xps");
+ Render(L"C:\\Users\\moby_\\Desktop\\xnalara\\models\\Alcina Dimitrescu\\xps.xps");
  // Render(L"C:\\Users\\moby_\\Desktop\\xnalara\\models\\RG17\\xps.xps");
 
  return 0;

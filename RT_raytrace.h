@@ -45,6 +45,7 @@ bool Trace(const wchar_t* filename);
 void RefreshJitterMatrix(void);
 void InitDepthTest(float tn, float tf);
 void UpdateDepthTest(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha);
+void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t mesh_index, uint8_t alpha);
 vector4D<float> BlendPixels(void);
 
 // shader functions

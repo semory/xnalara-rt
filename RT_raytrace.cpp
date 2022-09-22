@@ -6,6 +6,8 @@
 #include "RT_bvh.h"
 #include "RT_raytrace.h"
 
+#pragma region GLOBAL_VARIABLES
+
 // timing variables
 static bool timetest = true;
 static __int64 hz = 0;
@@ -48,13 +50,25 @@ static std::vector<vector2D<float>> sampling_matrix;
 
 // rendering variables
 static vector4D<float> clearcolor;
-static bool enable_DM = true;
-static bool enable_BM = true;
-static bool enable_LM = true;
-static bool enable_SM = true;
-static bool enable_EM = true;
-static bool enable_GM = true;
+static bool enable_DM = true; // diffuse mapping
+static bool enable_BM = true; // bump mapping
+static bool enable_LM = true; // light mapping
+static bool enable_SM = true; // specular mapping
+static bool enable_EM = true; // environment mapping
+static bool enable_GM = true; // glow mapping
 static bool debug_shader = false;
+
+// this is thread local storage for ray testing
+static size_t trace_node_stack[65536ul];
+static uint32_t trace_node_elem = 0;
+
+// this is thread local storage for shadow ray testing
+static size_t shadow_node_stack[65536ul];
+static uint32_t shadow_node_elem = 0;
+
+#pragma endregion GLOBAL_VARIABLES
+
+#pragma region DEPTH_TESTING_VARIABLES
 
 // depth testing variables
 struct DepthPixel {
@@ -68,17 +82,17 @@ static uint32_t depth_elem = 0;
 static float depth_tmin = 0.0f;
 static float depth_tmax = 0.0f;
 
+#pragma endregion DEPTH_TESTING_VARIABLES
+
+#pragma region SCENE_VARIABLES
+
 // sample scene
 static XNAModel model;
 static RTDynamicBVH bvh;
 
-// this is thread local storage for ray testing
-static size_t trace_node_stack[65536ul];
-static uint32_t trace_node_elem = 0;
+#pragma endregion SCENE_VARIABLES
 
-// this is thread local storage for shadow ray testing
-static size_t shadow_node_stack[65536ul];
-static uint32_t shadow_node_elem = 0;
+#pragma region PERFORMANCE_TIMING_FUNCTIONS
 
 bool SetTraceTiming(bool state)
 {
@@ -100,7 +114,9 @@ bool GetTraceTiming(void)
  return timetest;
 }
 
-#pragma region CAMERA
+#pragma endregion PERFORMANCE_TIMING_FUNCTIONS
+
+#pragma region CAMERA_FUNCTIONS
 
 void InitCamera(void)
 {
@@ -131,9 +147,9 @@ void SetCameraPosition(float x, float y, float z)
  E[2] = z;
 }
 
-#pragma endregion CAMERA
+#pragma endregion CAMERA_FUNCTIONS
 
-#pragma region LIGHTS
+#pragma region LIGHT_FUNCTIONS
 
 void ComputeLightDirection(float* D, float horz, float vert)
 {
@@ -220,9 +236,9 @@ void ResetLight(int index)
    }
 }
 
-#pragma endregion LIGHTS
+#pragma endregion LIGHT_FUNCTIONS
 
-#pragma region SHADING
+#pragma region SHADING_FUNCTIONS
 
 bool SetShadingState(bool state)
 {
@@ -248,8 +264,7 @@ bool GetShadowsState(void)
  return enable_shadows;
 }
 
-
-#pragma endregion SHADING
+#pragma endregion SHADING_FUNCTIONS
 
 #pragma region MODEL_FUNCTIONS
 
@@ -468,7 +483,7 @@ bool Trace(const wchar_t* filename)
                       sd.v = result.v;
                       sd.w = 1.0f - result.u - result.v;
                       auto color = (debug_shader ? RGDB(&sd) : (*shader)(&sd));
-                      UpdateDepthTest(color, result.t, face.mesh_index, bvh.model->meshlist[face.mesh_index].params.alpha);
+                      UpdateDepthTest_TESTING(color, result.t, face.mesh_index, bvh.model->meshlist[face.mesh_index].params.alpha);
                      }
                  }
                // put children on stack
@@ -644,10 +659,8 @@ void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t me
  // To solve the overlapping mesh problem, I currently shift or break during
  // the insertion sort until things are considerably over or under. Everything
  // else is considered close. For anything considered close, I put alpha meshes
- // over non-alpha meshes. Though a better way to do this is to also save the
- // mesh index and sort anything close by mesh index instead. This would simulate
- // the mesh rendering order in XNALara/XPS where you put overlapping alpha meshes 
- // later in the file.
+ // over non-alpha meshes. In XNALara/XPS, there is actually a rendering order,
+ // where opaque meshes are drawn first, followed by alpha meshes.
 
  // CASE #1: INVISIBLE PIXEL
  if(color.a == 0) return;
@@ -661,6 +674,7 @@ void UpdateDepthTest_TESTING(const vector4D<float>& color, float dt, uint32_t me
     return;
    }
 
+ // indexing variables
  constexpr float epsilon = 1.0e-6f;
  uint32_t j = depth_elem - 1;
  uint32_t k = depth_elem;
@@ -794,15 +808,19 @@ template<uint32_t rows, uint32_t cols>
 inline vector4D<float> SampleDiffuse(const XNAMesh& mesh, uint32_t index, const float (&color)[4], const float (&uv)[rows][cols])
 {
  vector4D<float> sample;
- if(enable_DM) sample = SampleTexture(mesh, index, uv);
- else {
-    sample.r = sample.g = sample.b = 0.75f;
-    sample.a = 1.0f;
+ if(enable_DM) {
+    sample = SampleTexture(mesh, index, uv);
+    sample[0] *= color[0];
+    sample[1] *= color[1];
+    sample[2] *= color[2];
+    sample[3] *= color[3];
    }
- sample[0] *= color[0];
- sample[1] *= color[1];
- sample[2] *= color[2];
- sample[3] *= color[3]; // OK, always 1.0f
+ else {
+    sample[0] = 0.75f*color[0];
+    sample[1] = 0.75f*color[1];
+    sample[2] = 0.75f*color[2];
+    sample[3] = color[3];
+   }
  return sample;
 }
 
@@ -1085,6 +1103,7 @@ void NormalMapping3(const XNAShaderData* input, uint32_t BM_index, uint32_t MM_i
  vector3D_normalize(N);
 }
 
+// shader for textureless, default color samples
 vector4D<float> RGDB(const XNAShaderData* input)
 {
  // initialize sample to flat color
@@ -2573,6 +2592,7 @@ vector4D<float> RG27(const XNAShaderData* input)
  // interpolated normal
  float N[3];
  float N_norm = InterpolateNormal(input, N);
+ float N_old[3] = { N[0], N[1], N[2] };
 
  // interpolated UV coordinates
  float uv[2][2];
@@ -2698,11 +2718,11 @@ vector4D<float> RG27(const XNAShaderData* input)
  if(enable_EM)
    {
     // compute sphere map UV
-    float scale = vector3D_scalar_product(input->ray->direction, N);
+    float scale = vector3D_scalar_product(input->ray->direction, N_old);
     float reflection[3] = {
-     input->ray->direction[0] - 2.0f*scale*N[0],
-     input->ray->direction[1] - 2.0f*scale*N[1],
-     input->ray->direction[2] - 2.0f*scale*N[2]
+     input->ray->direction[0] - 2.0f*scale*N_old[0],
+     input->ray->direction[1] - 2.0f*scale*N_old[1],
+     input->ray->direction[2] - 2.0f*scale*N_old[2]
     };
     vector3D_normalize(reflection);
     float denom = sqrt(vector3D_squared_norm(reflection) + 2.0f*reflection[2] + 1.0f);
@@ -2760,6 +2780,7 @@ vector4D<float> RG29(const XNAShaderData* input)
  // interpolated normal
  float N[3];
  float N_norm = InterpolateNormal(input, N);
+ float N_old[3] = { N[0], N[1], N[2] };
 
  // interpolated UV coordinates
  float uv[2][2];
@@ -2780,7 +2801,8 @@ vector4D<float> RG29(const XNAShaderData* input)
  // NORMAL MAPPING
  //
 
- NormalMapping3(input, BM_index, MM_index, R1_index, mesh.params.params[2], R2_index, mesh.params.params[2], uv, N);
+ float BumpUVScale = mesh.params.params[2];
+ NormalMapping3(input, BM_index, MM_index, R1_index, BumpUVScale, R2_index, BumpUVScale, uv, N);
 
  //
  // LIGHTING
@@ -2802,7 +2824,7 @@ vector4D<float> RG29(const XNAShaderData* input)
     // factors
     float kd = (k_conservation ? 1.0f - ka - ks : 1.0f); // energy conserving
     float specular_power = 10.0f; // XNALara uses 10.0f for BumpSpecularGloss
-    float specular_intensity = mesh.params.params[1];
+    float specular_intensity = mesh.params.params[1]; // BumpSpecularAmount
     if(!enable_SM) specular_intensity = 0.0f;
 
     // for each light
@@ -2879,14 +2901,14 @@ vector4D<float> RG29(const XNAShaderData* input)
  // ENVIRONMENT MAPPING
  //
 
- if(enable_EM)
+ if(enable_EM) // WARNING! DO NOT USE BUMP NORMAL!!!
    {
     // compute sphere map UV and sample texture
-    float scale = vector3D_scalar_product(input->ray->direction, N);
+    float scale = vector3D_scalar_product(input->ray->direction, N_old);
     float reflection[3] = {
-     input->ray->direction[0] - 2.0f*scale*N[0],
-     input->ray->direction[1] - 2.0f*scale*N[1],
-     input->ray->direction[2] - 2.0f*scale*N[2]
+     (input->ray->direction[0] - 2.0f*scale*N_old[0]),
+     (input->ray->direction[1] - 2.0f*scale*N_old[1]),
+     (input->ray->direction[2] - 2.0f*scale*N_old[2])
     };
     vector3D_normalize(reflection);
     float denom = sqrt(vector3D_squared_norm(reflection) + 2.0f*reflection[2] + 1.0f);
@@ -2896,9 +2918,9 @@ vector4D<float> RG29(const XNAShaderData* input)
 
     // interpolate
     float kr = mesh.params.params[0]; // 0.0 = no reflection, 1.0 = full reflection
-    DM_sample.r = DM_sample.r + kr*(EM_sample.r - DM_sample.r);
-    DM_sample.g = DM_sample.g + kr*(EM_sample.g - DM_sample.g);
-    DM_sample.b = DM_sample.b + kr*(EM_sample.b - DM_sample.b);
+    DM_sample.r = DM_sample.r + kr * (EM_sample.r - DM_sample.r);
+    DM_sample.g = DM_sample.g + kr * (EM_sample.g - DM_sample.g);
+    DM_sample.b = DM_sample.b + kr * (EM_sample.b - DM_sample.b);
    }
 
  // finished
